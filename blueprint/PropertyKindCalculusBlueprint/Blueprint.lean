@@ -325,17 +325,44 @@ leaves three ways a value comes to carry a kind, and the provenance layer names 
   value `⟨m⟩`; the author states the classification claim, and the reason string, harvested
   into the audit, is the only content.
 
-An attestation is to a kind claim what an `axiom` is to a proof, and the
-{ref "boundary-family"}[boundary audit] is to a model what
-[`#print axioms`](https://lean-lang.org/doc/reference/latest/Interacting-with-Lean/#hash-print)
-is to a theorem: `#kind_boundary_audit ns …` lists every boundary site in a namespace — each
-entry, exit and crossing, with its tier and, for an attestation, its harvested reason. Pinned
-under [`#guard_msgs`](https://lean-lang.org/doc/reference/latest/Interacting-with-Lean/#hash-guard_msgs),
+An attestation is a _hypothesis_ of the model, not an axiom of the calculus. The distinction
+is the one Lean draws. An axiom is global — stated once, available to every proof, and a single
+false one makes everything provable — whereas a hypothesis is local to the statement that
+carries it, and a theorem with thirty of them is unremarkable. A model of any size carries
+dozens of attestations, because every place a number's kind rests on the author's knowledge
+rather than on a law or a check is one: an identification of a retrieved variable with the
+forward model's own, a convention such as NaN for no value, a re-entry from a table fetch the
+calculus cannot see, an operation the algebra has no edge for. Like a hypothesis, an attestation
+does no work in the computation — `Quantity.attest "why" m` is `⟨m⟩` — it licenses an
+interpretation, and the reason is its whole content.
+
+The axiom's part is not played by the calculus. The core postulates nothing about any
+particular kind: its foundation is Dybkær's ontology of property ({ref "foundations"}[Foundations]),
+and what it fixes — which operators a scale admits, that two kinds meet only under a witnessed
+law, that dimension is forgetful — is designed and proved. The system of quantities the calculus
+is instantiated with is ISO 80000's ({ref "iso80000"}[the standards catalogue]): a width is a
+kind of length, speed is path length per duration, each entry cited to its item. That is an
+axiomatization in the mathematician's sense — a system adopted by the consensus of the
+community whose subject it is, not a list of assumptions — and the calculus checks each
+transcribed relation: its scale preconditions close by `rfl`, and the catalogued dimensions are
+confirmed against it by computation. A domain model extends that system with kinds and
+relations of its own, and those are the postulates {ref "trust-model"}[the trust model] prices:
+authored, reviewed, and refutable wherever their kinds carry a dimension. Its attestations are
+its hypotheses.
+
+For a theorem, the hypotheses stand gathered in its statement. A model scatters them over its
+source, and the {ref "boundary-family"}[boundary audit] gathers them back: `#kind_boundary_audit
+ns …` lists every boundary site in a namespace — each entry, exit and crossing, with its tier
+and, for an attestation, its harvested reason — so the pinned report is the model's _statement_,
+the list of what it assumes. Pinned under
+[`#guard_msgs`](https://lean-lang.org/doc/reference/latest/Interacting-with-Lean/#hash-guard_msgs),
 an entry point nobody declared fails the build — not as a type error, since a raw `⟨x⟩`
-typechecks, but because the audit refuses it. The discipline that goes with it is the analog
-of a no-axiom rule: attest only where no check could establish the kind and no edge could
-derive it. And the honest limit is the one an axiom has: a wrong attestation typechecks,
-appears as one line in the pinned report, and is exactly as good as the review of that line.
+typechecks, but because the audit refuses it. The discipline is a referee's, not a no-axiom
+rule: derive what a law derives, check what a check can establish, and state everything else.
+Its end state is not zero attestations but zero _unstated_ ones. And the honest limit is a
+hypothesis's: a false one leaves every downstream step valid and the conclusion worthless. It
+typechecks, appears as one line in the pinned report, and is exactly as good as the reading of
+that line — the reader is the caller who discharges it.
 
 ## The calculus at a glance
 %%%
