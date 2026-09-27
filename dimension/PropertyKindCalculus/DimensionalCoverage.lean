@@ -1,9 +1,12 @@
 /-
 # DimensionalCoverage — `#kind_dimensional_coverage`, the dimensional cross-check of the kind algebra
 
-The trust model of the core calculus is that witnesses are *authored, not checked*: a
-`ProductKind k₁ k₂ k` is an axiom of the kind algebra, and `#kind_edges` is the audit that
-enumerates those axioms. But one layer *can* check them: the `Dimension` functor. A wrong edge
+The trust model of the core calculus is that witnesses are *authored, not checked*
+(`QuantityClassification`, "The trust model"): a `ProductKind k₁ k₂ k` proves only that its
+three kinds are ratio-scale. That *these* kinds meet, and that this is the kind that results,
+is the author's metrological claim — carried by the witness, decided by nobody — and it is
+that claim `#kind_edges` enumerates, the way `#print axioms` enumerates what a proof rests on.
+But one layer *can* check it: the `Dimension` functor. A wrong edge
 whose kinds carry genuine dimensions is **refutable** — `ω · τ → ω` cannot cohere, because
 `T⁻¹ · T ≠ T⁻¹` — and the curated interaction algebras (`InteractionAlgebra`, the
 `MironovKMul` pattern) discharge exactly that side-condition for the edges an author chose to
