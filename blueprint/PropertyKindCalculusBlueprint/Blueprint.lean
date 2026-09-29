@@ -37,12 +37,14 @@ import PropertyKindCalculusBlueprint.Chapters.Terminology
 import PropertyKindCalculusBlueprint.ItemIndex
 import PropertyKindCalculusBlueprint.TraceabilityTable
 import PropertyKindCalculusBlueprint.OntologicalSquare
+import PropertyKindCalculusBlueprint.Figures
 import PropertyKindCalculusBlueprint.References
 import PropertyKindCalculusBlueprint.Version
 
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open PropertyKindCalculusBlueprint
 open PropertyKindCalculusBlueprint.ItemIndex
 open PropertyKindCalculusBlueprint.Traceability
 open PropertyKindCalculusBlueprint.Version
@@ -1385,6 +1387,21 @@ applied to a _concrete witness_ whose premises are discharged — and, at the de
 boundary where a premise _fails_, shown genuinely excluded — so that no requirement is
 satisfied *vacuously*: an empty quantifier or an unsatisfiable hypothesis would leave a
 theorem true but empty, and the witness is what rules that out.
+
+What a _proved_ status rests on is a stack, and the stack is worth drawing once. A domain
+model written in the calculus traces its trust down through the libraries the calculus
+requires — PhysLib for dimensions and units, and cslib for the labelled transition systems
+in which the {ref "capstones"}[capstone chapter] states its bisimulation, the two peers on
+Mathlib; TorchLean, with FloatLib under it, for the tensor carriers and the executable
+float word — to Mathlib and then to the Lean kernel with its three classical axioms, the one
+band that is believed rather than derived, checked, or enumerated:
+
+:::svg_figure PropertyKindCalculusBlueprint.Figures.architectureCake
+:::
+
+Each band says what it costs a reviewer in trust, and a filled square marks a property the
+build checks. The figure is a picture of a dependency graph — who requires whom, as the
+package manifests record it — and carries no measured claim of its own.
 
 # Why a calculus, not a taxonomy
 

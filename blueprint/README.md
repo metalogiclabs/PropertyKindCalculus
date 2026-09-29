@@ -76,6 +76,28 @@ proved nodes link real declarations, `lake build` re-checks that those links
 still resolve to sorry-free proofs — the blueprint cannot silently drift from the
 library.
 
+## Figures
+
+Three figures are hand-authored schematics rather than harvests: the architecture cake
+(what a proved status rests on), Lowe's square with the calculus's identifiers
+(Foundations), and the three layers with their two ladders (the capstone chapter). Their
+generators are the stdlib-only Python scripts under `scripts/figures/`, with the logo
+sources under `figures/logos/`; the SVGs they emit are committed under `figures/`, and
+`PropertyKindCalculusBlueprint/Figures.lean` reads each one at compile time for the
+`:::svg_figure` directive to inline — the same `Block.diagram` the Illuminate `diagram`
+code block renders through, so a schematic behaves as a drawn diagram does in every
+output. After editing a generator:
+
+```bash
+cd blueprint
+./scripts/make-figures.sh            # rewrite figures/*.svg; drops the stale Figures build products
+./scripts/make-figures.sh --check    # what ci-pages.sh runs first: fails if a committed SVG differs
+```
+
+The JPL Gen-AI deck in `research-presentations` commits its own copies, written with each
+generator's `--out`; the cake's deck variant is `--audience deck` (its docstring says how
+the two audiences differ).
+
 ## Viewing the rendered output
 
 Two outputs are produced; both can be opened directly as files.

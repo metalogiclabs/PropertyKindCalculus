@@ -8,10 +8,14 @@ import PropertyKindCalculus
 -- The foundation cites Dybkær, Lowe, Simons, Heil, and Marmodoro, so the chapter
 -- imports the blueprint's `References`.
 import PropertyKindCalculusBlueprint.References
+-- The square, drawn with the calculus's identifiers: the `svg_figure` directive and the
+-- figure it inlines.
+import PropertyKindCalculusBlueprint.Figures
 
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open PropertyKindCalculusBlueprint
 
 #doc (Manual) "Foundations: system, part, and the ontological square" =>
 %%%
@@ -152,6 +156,22 @@ The top _characterized by_
 edge — kinds characterized by attributes — is the dedicated kind (the dedicated-kinds
 chapter), refined by Dybkær's pertinent component, a refinement the square itself does not
 carry.
+
+The square, with the calculus's identifiers at its corners and its mechanisms on its
+edges, is worth seeing drawn:
+
+:::svg_figure PropertyKindCalculusBlueprint.Figures.loweSquare
+:::
+
+The two heavy edges are the two type indices of an individual quantity — the object index
+`o` along the bottom and the kind index `k` down the right — and the plates behind the
+_Modes_ corner are the carrier `R`, which indexes that corner alone: `R` is no ontological
+category and has neither a corner nor an edge, so a change of carrier stacks copies of the
+mode and moves nothing else. The columns and rows are braced because the square's whole
+content is a two-by-two — universals over particulars, substantial beside non-substantial —
+and naming the columns keeps the two senses of _kind_ apart: Lowe's _Kinds_ corner is a
+kind of *system*, while the `k` of `Quantity k R` is a kind-of-property, the _Attributes_
+corner. Each corner's instance slot is left empty; a model fills it.
 
 A word on _index_, which this chapter uses throughout. In Lean's own vocabulary the
 arguments of `IndividualQuantity` are structure _parameters_: a structure has no indices,

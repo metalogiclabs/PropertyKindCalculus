@@ -17,10 +17,14 @@ import PropertyKindCalculus.Torch.Paradigm.TapeSeal
 import PropertyKindCalculus.Tests.Graph.Seal
 import PropertyKindCalculus.Tests.Graph.Bisimulation
 import PropertyKindCalculus.Tests.Dimension.Homogeneity
+-- The three layers and their ladders, drawn: the `svg_figure` directive and the figure it
+-- inlines.
+import PropertyKindCalculusBlueprint.Figures
 
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open PropertyKindCalculusBlueprint
 
 #doc (Manual) "Capstone theorems — what the calculus can do" =>
 %%%
@@ -124,6 +128,22 @@ The {tech}[kind-transporting weak bisimulation] is therefore the relation betwee
 provenance layer and the computation layer. It never touches the dimension layer directly,
 but that layer's verdicts ride along it: every tape sub-graph that realizes an occurrence
 realizes a law the dimension layer has judged coherent.
+
+The three layers and the two ladders, drawn on one module — `y = a · b + e`, the module the
+bisimulation witnesses below decide — seen at three granularities:
+
+:::svg_figure PropertyKindCalculusBlueprint.Figures.threeLayers
+:::
+
+The middle band is the metrological provenance hypergraph, the kinded one. The top band is
+its image under the dimension functor, node by node and occurrence by occurrence, with the
+family rule each occurrence must satisfy. The bottom band is the computational tape graph
+the same module records at a complex carrier, where the one `product` occurrence expands to
+four multiplications, a subtraction and an addition: the four products are the interior
+vertices no node of the hypergraph names, the silent steps that make the bisimulation weak,
+and the `additive` occurrence expands componentwise, with no interior at all. `R` runs from
+each node to each of its observable components; the dotted boxes are the realizations of
+the two occurrences.
 
 # The seal of a module — the provenance hypergraph
 
