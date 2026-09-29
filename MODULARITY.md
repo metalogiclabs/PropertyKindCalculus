@@ -21,7 +21,8 @@
 ## 1. The paradigm and its name
 
 **Metrological modularity**: organize science software as *metrology modules*. A metrology
-module is a unit whose
+module is a software component — the declarations one boundary names as its members, which
+need not be a file or a namespace — whose
 
 1. **interface** is a declared boundary of kind-typed ports — input quantities, output
    quantities, parameters, configuration, conditional outputs, nominal properties (a
@@ -35,8 +36,13 @@ module is a unit whose
 3. **implementation** is a *measurement function* (VIM4 2CD §2.13 [VIM3: 2.49] — "f may
    symbolize an algorithm"): a carrier-parametric kinded `def` whose relation to the
    measurement model is `equals`, `inverts`, `refines`, or `boundedBy` a declared tolerance;
-4. **licenses** are stated per carrier rung — because laws transfer across the carrier
-   ladder and side conditions do not (the R10 rule; see §4.1);
+4. **licenses** are stated per rung of the carrier ladder, as the relation's license
+   clause: the measurement-model claim is proved at one carrier, and each further carrier
+   the module runs at — binary32, `Float`, the tape — gets its own entry saying how the
+   claim holds there. A law proved over the reals survives the move up to one rounding per
+   operation; a side condition phrased in the carrier's own arithmetic, such as "the total
+   is not zero", constrains the exact total at one rung and the rounded total at the next,
+   and neither implies the other (the R10 rule; see §4.1);
 5. **mereology** is declared — each output port carries its aggregation class
    (extensive / quasi-extensive / conditionally extensive / intensive / whole-proper /
    count-keyed-by-sortal), and the license to distribute the module's computation over a
@@ -44,7 +50,7 @@ module is a unit whose
 
 The name deliberately pairs the discipline (metrology — the interface vocabulary is
 Dybkær/VIM kinds and quantities, the spec vocabulary is the VIM measurement model) with the
-software principle (modularity — boundaries, contracts, composition). The unit is a
+software principle (modularity — boundaries, contracts, composition). The component is a
 "metrology module"; its spec clause is "the measurement model"; its implementation clause is
 "the measurement function".
 
@@ -581,7 +587,7 @@ remain pinned refusals at the module level.
 ### M4 — Join the uncertainty budget to the boundary *(PKC; first `uncertainty/` ⇄ `Provenance` import)*
 **Status: DONE — v0.108.0 `5b0c4b7c` (2026-09-05).** `BoundaryBudget.lean` is the
 join: `PortBudget` attaches a term list to one produced port, and `#kind_budget`
-checks it against the assembled graph — the port produced and at the stated kind, the
+checks it against the assembly's provenance hypergraph — the port produced and at the stated kind, the
 assembly acyclic (`Provenance.acyclic`, path-finiteness as the well-formedness of the
 sum), every term an influencing source (`Provenance.influencers`, the term list of an
 uncertainty budget by its own name). The combined line is the quadrature of the terms

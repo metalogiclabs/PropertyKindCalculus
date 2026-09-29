@@ -19,11 +19,15 @@ and its evidence discipline (provenance, audit, uncertainty). This chapter state
 organizing principle they add up to: software organized as *metrology modules*. Nothing
 in the principle is specific to science software — it applies wherever a computed value
 is presented as a measurement result in the VIM sense, whatever the domain; science
-software is simply where this development exercises it. A metrology module is a unit whose
+software is simply where this development exercises it. A
+{deftech}[metrology module]{index}[metrology module] is a software component — the
+declarations one boundary names as its members, which need not be a file or a
+namespace — whose
 
-1. *interface* is a declared boundary of kind-typed ports — input quantities, output
-   quantities, parameters, configuration, and conditional outputs with their deciders;
-2. *behavior* is a *measurement model* in the VIM sense — VIM 4 2CD §2.12 \[VIM3: 2.48\],
+1. *interface* is a {deftech}[declared boundary]{index}[declared boundary] of kind-typed
+   ports — input quantities, output quantities, parameters, configuration, and conditional
+   outputs with their deciders;
+2. *behavior* is a {deftech}[measurement model]{index}[measurement model] in the VIM sense — VIM 4 2CD §2.12 \[VIM3: 2.48\],
    the mathematical relation among the quantities involved, in the general implicit form
    $`h(Y, X_1, \ldots, X_n) = 0` — attached to the boundary as a checked theorem edge,
    not as prose;
@@ -31,8 +35,13 @@ software is simply where this development exercises it. A metrology module is a 
    Note allows that "f" may symbolize an algorithm): a carrier-parametric kinded
    definition whose relation to the measurement model is `equals`, `inverts`, `refines`,
    or `boundedBy` a declared tolerance;
-4. *licenses* are stated per carrier rung — because laws transfer across the carrier
-   ladder and side conditions do not;
+4. *licenses* are stated per rung of the {tech}[carrier ladder], as the relation's
+   {tech}[license clause]: the measurement-model claim is proved at one carrier, and each
+   further carrier the module runs at — binary32, `Float`, the tape — gets its own entry
+   saying how the claim holds there. A law proved over the reals survives the move up to
+   one rounding per operation; a side condition phrased in the carrier's own arithmetic,
+   such as "the total is not zero", constrains the exact total at one rung and the
+   rounded total at the next, and neither implies the other;
 5. *mereology* is declared — each output port carries its aggregation class, and the
    license to distribute the module's computation over a carving is *derived* from that
    declaration, not assumed.
@@ -131,6 +140,11 @@ acceptance and refusal probes for all four kinds.
 :::
 
 # The license clause — side conditions do not transfer
+
+A relation's {deftech}[license clause]{index}[license clause] is the part of its
+declaration that extends its witness beyond the carrier rung the witness is proved at: one
+entry per further rung of the {tech}[carrier ladder], each naming how the claim holds
+there — a repair theorem, or an independent witness restated at that rung.
 
 :::definition "def_relation_license" (parent := "metrological_modularity") (lean := "PropertyKindCalculus.Provenance.RelationLicense")
 One rung of a relation's license clause: the carrier rung the claim is extended to, and

@@ -192,6 +192,23 @@ RUBRIC_CHAPTERS = [
     ("D", "blueprint/PropertyKindCalculusBlueprint/Chapters/DeploymentTemplate.lean"),
 ]
 
+# Check 8 — the terminological dictionary against the blueprint, the root documents, and
+# the library. One name per concept: each term has exactly one `{deftech}` in the blueprint,
+# under the section the dictionary names; a retired phrasing is refused wherever the gate
+# reads and counted in the library against a ratchet pin.
+TERM_DICTIONARY = "terminology/PropertyKindCalculus/Terminology/Dictionary.lean"
+# Root documents where a retired phrasing is refused outright (the blueprint chapters and
+# root are always in this set).
+TERM_GATED_DOCS = ["README.md", "MODULARITY.md", "UNCERTAINTY.md", "METHODOLOGY_TEMPLATES.md",
+                   "RENDERING.md", "blueprint/README.md"]
+# Library source roots where a retired phrasing is counted against `libraryRetiredSites`.
+TERM_LIBRARY_DIRS = ["PropertyKindCalculus", "graph", "torch", "dimension", "uncertainty",
+                     "index", "crossrefs", "iso80000", "ForPhysLib", "examples", "tests",
+                     "requirements", "rubrics", "docgen", "apps"]
+TERM_DEFTECH = re.compile(r"\{deftech\}\[([^\]]+)\]")
+TERM_TAG = re.compile(r'tag := "([^"]+)"')
+TERM_RATCHET = re.compile(r"def libraryRetiredSites : Nat := (\d+)")
+
 CHAPTER_TITLE = re.compile(r'#doc \(Manual\) "([^"]+)" =>')
 NODE_TAGS = re.compile(r'\(tags := "([^"]*)"\)')
 # The blueprint's own status vocabulary, in the italic form its prose uses.
@@ -457,6 +474,178 @@ def check_rubric_chapters(quiet: bool) -> list[str]:
     return failures
 
 
+def term_normalize(s: str) -> str:
+    """Verso's `deftech`/`tech` key normalization, reproduced: lowercase, a trailing `ies`
+    becomes `y`, and every run of whitespace or hyphens becomes one space."""
+    s = s.strip().lower()
+    if s.endswith("ies"):
+        s = s[:-3] + "y"
+    return re.sub(r"[\s-]+", " ", s)
+
+
+def parse_dictionary(text: str) -> list[dict]:
+    """The dictionary entries, read the way a reader would: one `{ key := … }` per entry
+    inside `def dictionary`, with the fields the gate needs — key, definedIn, avoid."""
+    block = re.search(r"def dictionary : List Term :=\n(.*?)\n  \]\n", text, re.S)
+    if not block:
+        return []
+    entries: list[dict] = []
+    for chunk in re.split(r"\n  [\[,] \{", "\n" + block.group(1))[1:]:
+        key = re.search(r'key := "([^"]*)"', chunk)
+        if not key:
+            continue
+        defined = re.search(r'definedIn := "([^"]*)"', chunk)
+        avoid_m = re.search(r"avoid := \[(.*?)\]", chunk, re.S)
+        entries.append({
+            "key": key.group(1),
+            "definedIn": defined.group(1) if defined else "",
+            "avoid": re.findall(r'"([^"]*)"', avoid_m.group(1)) if avoid_m else [],
+        })
+    return entries
+
+
+def check_terminology(quiet: bool) -> list[str]:
+    """Check 8: the terminological dictionary against the documents.
+
+    Three claims, each read from the sources the way a reader would. (a) Every term has
+    exactly one `{deftech}` in the blueprint, and it sits under the section tag the
+    dictionary names — so the *Defined in* link in the rendered table reaches the prose
+    that explains the term, and a term explained in two places fails. (b) A `{deftech}`
+    the dictionary does not carry fails: the entry comes first. (c) No retired phrasing
+    survives in a blueprint chapter, the blueprint root, or a root plan document; in the
+    library's own docstrings the count is held by a ratchet pin, so it moves only by a
+    conscious edit — a rise is a regression, a fall asks for the pin to be lowered.
+    """
+    failures: list[str] = []
+    dict_text = read(TERM_DICTIONARY)
+    entries = parse_dictionary(dict_text)
+    if not entries:
+        return [f"{TERM_DICTIONARY}: parsed no dictionary entries — the `def dictionary` "
+                "layout no longer matches what this gate reads"]
+
+    bp_files = sorted((ROOT / BP_CHAPTERS).glob("*.lean")) + [ROOT / BP_SOURCE / "Blueprint.lean"]
+    deftechs: dict[str, list[tuple[str, int, str | None]]] = {}
+    tags_all: set[str] = set()
+    for path in bp_files:
+        src = path.read_text(encoding="utf-8")
+        rel = path.relative_to(ROOT).as_posix()
+        tag_positions = [(m.start(), m.group(1)) for m in TERM_TAG.finditer(src)]
+        tags_all.update(t for _, t in tag_positions)
+        # Verso does not traverse a `:::group` body for term definitions (measured
+        # 2026-09-28: a `{deftech}` inside one renders, but every `{tech}` pointing at it
+        # fails with "No term def with key"), so a definition there is refused here rather
+        # than discovered at render time.
+        group_lines: set[int] = set()
+        in_group = False
+        for n, line in enumerate(src.splitlines(), 1):
+            if line.startswith(":::group"):
+                in_group = True
+            elif in_group and line.strip() == ":::":
+                in_group = False
+            if in_group:
+                group_lines.add(n)
+        for m in TERM_DEFTECH.finditer(src):
+            enclosing = None
+            for pos, t in tag_positions:
+                if pos < m.start():
+                    enclosing = t
+                else:
+                    break
+            line = src.count("\n", 0, m.start()) + 1
+            if line in group_lines:
+                failures.append(
+                    f"{rel}:{line}: {{deftech}} for {m.group(1)!r} sits inside a `:::group` "
+                    "block, which Verso does not traverse for term definitions — define it "
+                    "in prose or in a definition or theorem node"
+                )
+            deftechs.setdefault(term_normalize(m.group(1)), []).append((rel, line, enclosing))
+
+    known: set[str] = set()
+    for e in entries:
+        k = term_normalize(e["key"])
+        known.add(k)
+        sites = deftechs.get(k, [])
+        if len(sites) != 1:
+            where = "; ".join(f"{r}:{l}" for r, l, _ in sites)
+            failures.append(
+                f"{TERM_DICTIONARY}: term {e['key']!r} needs exactly one {{deftech}} in the "
+                f"blueprint, found {len(sites)}" + (f" ({where})" if where else "")
+            )
+        else:
+            rel, line, enclosing = sites[0]
+            if enclosing != e["definedIn"]:
+                failures.append(
+                    f"{rel}:{line}: {{deftech}} for {e['key']!r} sits under tag "
+                    f"{enclosing!r}; the dictionary says {e['definedIn']!r}"
+                )
+        if e["definedIn"] not in tags_all:
+            failures.append(
+                f"{TERM_DICTIONARY}: term {e['key']!r} names section tag "
+                f"{e['definedIn']!r}, which no blueprint section carries"
+            )
+    for k, sites in deftechs.items():
+        if k not in known:
+            for rel, line, _ in sites:
+                failures.append(
+                    f"{rel}:{line}: {{deftech}} defines {k!r}, which the dictionary does "
+                    "not carry — add the entry first"
+                )
+
+    retired = [(a, e["key"]) for e in entries for a in e["avoid"]]
+    gated = [p for p in bp_files if p.name != "Terminology.lean"] + \
+        [ROOT / d for d in TERM_GATED_DOCS]
+    for path in gated:
+        if not path.exists():
+            continue
+        rel = path.relative_to(ROOT).as_posix()
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            low = line.lower()
+            for phrase, canonical in retired:
+                if phrase.lower() in low:
+                    failures.append(
+                        f"{rel}:{n}: retired phrasing {phrase!r} — the dictionary's term "
+                        f"is {canonical!r}"
+                    )
+
+    # The library: counted against the ratchet, not refused.
+    hits: dict[str, int] = {}
+    for d in TERM_LIBRARY_DIRS:
+        base = ROOT / d
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*.lean")):
+            if ".lake" in path.parts:
+                continue
+            try:
+                low = path.read_text(encoding="utf-8").lower()
+            except UnicodeDecodeError:
+                continue
+            n = sum(low.count(phrase.lower()) for phrase, _ in retired)
+            if n:
+                hits[path.relative_to(ROOT).as_posix()] = n
+    total = sum(hits.values())
+    pin_m = TERM_RATCHET.search(dict_text)
+    if not pin_m:
+        failures.append(f"{TERM_DICTIONARY}: could not parse `libraryRetiredSites`")
+    else:
+        pin = int(pin_m.group(1))
+        if total != pin:
+            top = ", ".join(f"{r} ({c})" for r, c in
+                            sorted(hits.items(), key=lambda kv: -kv[1])[:6])
+            verdict = "a regression" if total > pin else "lower the pin to match"
+            failures.append(
+                f"{TERM_DICTIONARY}: `libraryRetiredSites := {pin}`, but the library carries "
+                f"{total} retired-phrasing site(s) — {verdict}; top files: {top}"
+            )
+        elif not quiet:
+            print(f"ok    {TERM_DICTIONARY}: library retired-phrasing sites = {total}, "
+                  "at the ratchet pin")
+    if not failures and not quiet:
+        print(f"ok    {TERM_DICTIONARY}: {len(entries)} terms, each defined once under its "
+              "section; no retired phrasing in the blueprint or the root documents")
+    return failures
+
+
 def main() -> int:
     quiet = "--quiet" in sys.argv
     failures: list[str] = []
@@ -540,6 +729,10 @@ def main() -> int:
     # 7. The application-template chapters against the rubric catalogue.
     failures.extend(check_rubric_chapters(quiet))
 
+    # 8. The terminological dictionary against the blueprint, the root documents, and
+    # the library's ratchet.
+    failures.extend(check_terminology(quiet))
+
     for rel, reason in EXEMPT.items():
         if not quiet:
             print(f"exempt {rel}: {reason}")
@@ -552,7 +745,9 @@ def main() -> int:
     print("\nAll version claims agree with lean-toolchain; all blueprint status")
     print("claims agree with the chapter sources; all package-version sites agree;")
     print("the plain-terms bullets name every catalogued requirement; the")
-    print("application-template chapters gloss every catalogued rubric.")
+    print("application-template chapters gloss every catalogued rubric; every")
+    print("dictionary term is defined once and no retired phrasing survives where")
+    print("the gate reads.")
     return 0
 
 

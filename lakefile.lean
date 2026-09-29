@@ -287,6 +287,17 @@ lean_lib «Rubrics» where
   srcDir := "rubrics"
   globs := #[.andSubmodules `PropertyKindCalculus.Rubrics]
 
+/-- The **terminological dictionary**: one entry per concept the calculus names — the
+canonical phrase, its sanctioned short form, a one-sentence gloss, the declarations that
+carry it, the blueprint section that defines it, and the retired phrasings that must not
+reappear. Read by the blueprint's terminology chapter (the generated dictionary table, which
+also checks that every cited declaration exists) and by `scripts/check-doc-pins.py` (the
+consistency gate over the blueprint and the root documents, plus a ratchet over the library's
+own docstrings). Prelude-only data. Build with `lake build Terminology`. -/
+lean_lib «Terminology» where
+  srcDir := "terminology"
+  globs := #[.andSubmodules `PropertyKindCalculus.Terminology]
+
 /-- The **TorchLean-backed instance** of the R10 exec/spec refinement bridge: the
 concrete IEEE-754 binary32 carriers (TorchLean's `FP32` rounding spec and
 `IEEE32Exec` executable) realizing `CarrierRefinement` over `ℝ`. This is the one

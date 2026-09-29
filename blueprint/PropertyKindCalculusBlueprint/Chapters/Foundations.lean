@@ -145,10 +145,23 @@ substantial particular), `KindOfProperty` his _Attributes_ (the non-substantial 
 edge — substances instantiate kinds. The right _instantiated by_ edge — modes instantiate
 attributes — is the kind index of an individual quantity, and the bottom _characterized by_
 edge — substances characterized by modes — is its object index: both edges into the mode
-are *type indices*, which is exactly why they gate arithmetic. The top _characterized by_
+are carried in the *type* of an individual quantity, which is what puts the arithmetic under
+the type checker — two quantities disagreeing on either edge are of two different types, so
+nothing combines them, and the refusal is the compiler's rather than a convention's.
+The top _characterized by_
 edge — kinds characterized by attributes — is the dedicated kind (the dedicated-kinds
 chapter), refined by Dybkær's pertinent component, a refinement the square itself does not
 carry.
+
+A word on _index_, which this chapter uses throughout. In Lean's own vocabulary the
+arguments of `IndividualQuantity` are structure _parameters_: a structure has no indices,
+those being the arguments an inductive declares to the right of the colon and may vary from
+one constructor to the next. The prose says _index_ deliberately, because what the
+correspondence needs to name is the role rather than the declaration form — each argument is
+fixed in the type of any given quantity, so that two quantities differing in one of them are
+of two different types, and that is the property the square's edges are identified with
+here. A reader who wants the declaration's own term should read _parameter_ wherever this
+chapter writes _index_.
 
 The diagonal is a structural agreement rather than a construct. Lowe's _exemplified by_ —
 a substance exemplifying an attribute — is derivative for him, factoring through either

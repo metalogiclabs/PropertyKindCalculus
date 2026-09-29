@@ -4,6 +4,7 @@ import VersoBlueprint
 import VersoBlueprint.Commands.Graph
 import VersoBlueprint.Commands.Summary
 import PropertyKindCalculusBlueprint.Chapters.Spine
+import PropertyKindCalculusBlueprint.Chapters.Capstones
 import PropertyKindCalculusBlueprint.Chapters.Foundations
 import PropertyKindCalculusBlueprint.Chapters.DedicatedKind
 import PropertyKindCalculusBlueprint.Chapters.Units
@@ -32,6 +33,7 @@ import PropertyKindCalculusBlueprint.Chapters.CrossReferences
 import PropertyKindCalculusBlueprint.Chapters.UsingTheLibrary
 import PropertyKindCalculusBlueprint.Chapters.ModelTemplate
 import PropertyKindCalculusBlueprint.Chapters.DeploymentTemplate
+import PropertyKindCalculusBlueprint.Chapters.Terminology
 import PropertyKindCalculusBlueprint.ItemIndex
 import PropertyKindCalculusBlueprint.TraceabilityTable
 import PropertyKindCalculusBlueprint.OntologicalSquare
@@ -249,6 +251,17 @@ declaration that discharges it and reports that declaration's checked status, wi
 headline results tagged *capstone*. The dependency graph and a status summary come at the
 end.
 
+What can the calculus _do_ — what guarantee does a model earn by being written in it,
+stated as a theorem whose hypotheses the build discharges? Three capstone theorems answer
+that question, and they are the subject of {ref "capstones"}[the capstone chapter]: the
+_seal of a module_ — once its gates are declared, no other raw datum reaches its outputs;
+the _seal of the computation_ — the same guarantee for the code at every carrier, with
+every kind change at a declared crossing; and _dimensional homogeneity_ — dimension is a
+homomorphism along every path of a well-formed model. That chapter is written
+blueprint-first: the properties are architected and their proofs sketched there before the
+code-level refactoring each one calls for is done, and its nodes turn from _planned_ to
+_proved_ as the declarations land.
+
 The whole blueprint is also available as a single paginated document:
 [download the PDF](PropertyKindCalculus-Blueprint.pdf).
 
@@ -299,20 +312,23 @@ trust is granted by hand — is exactly what an author still declares, and each 
 is an annotation the machine checks:
 
 - *Sources.* Raw data enters through {ref "annotation-kindIngest"}[`@[kindIngest]`], a
-  checked ingest mint; an adjudicated constant — a cited coefficient, a threshold — enters
-  through {ref "annotation-kindConst"}[`@[kindConst]`].
-- *Sinks.* A kinded value leaves the calculus as a bare number through
+  {deftech}[checked ingest]{index}[checked ingest] — a mint admitted by a check; an
+  adjudicated constant — a cited coefficient, a threshold — enters as a
+  {deftech}[constant mint]{index}[constant mint] through
+  {ref "annotation-kindConst"}[`@[kindConst]`].
+- *Sinks.* A kinded value leaves the calculus as a bare number at an
+  {deftech}[emission]{index}[emission], through
   {ref "annotation-kindEmission"}[`@[kindEmission]`]: a deploy driver, a serializer, the
   parity apparatus the erasure theorems are stated over.
 - *Trust granted by hand.* A value that already carries one kind and is re-typed as
-  another, with no law of the algebra to derive it, is a
-  {ref "annotation-kindCrossing"}[`@[kindCrossing]`]; representation plumbing that drops to
+  another, with no law of the algebra to derive it, is a {deftech}[crossing]{index}[crossing],
+  tagged {ref "annotation-kindCrossing"}[`@[kindCrossing]`]; representation plumbing that drops to
   the carrier without changing the kind is a {ref "annotation-carrierVocab"}[`@[carrierVocab]`].
 
 Between the sources and the sinks nothing is declared, because nothing needs to be: a kind
 reached through a law of the algebra is _derived_, at a site the elaborator checked. That
-leaves three ways a value comes to carry a kind, and the provenance layer names them
-(`Provenance.IntroTier`):
+leaves three ways a value comes to carry a kind — its {deftech}[evidence tier]{index}[evidence tier] —
+and the provenance layer names them (`Provenance.IntroTier`):
 
 - `derived` — through a law, such as `ProductKind massK velocityK momentumK`. No judgment
   is made at the use site; it was made once, when the edge was registered, and the
@@ -325,7 +341,7 @@ leaves three ways a value comes to carry a kind, and the provenance layer names 
   value `⟨m⟩`; the author states the classification claim, and the reason string, harvested
   into the audit, is the only content.
 
-An attestation is a _hypothesis_ of the model, not an axiom of the calculus. The distinction
+An {deftech}[attestation]{index}[attestation] is a _hypothesis_ of the model, not an axiom of the calculus. The distinction
 is the one Lean draws. An axiom is global — stated once, available to every proof, and a single
 false one makes everything provable — whereas a hypothesis is local to the statement that
 carries it, and a theorem with thirty of them is unremarkable. A model of any size carries
@@ -351,7 +367,8 @@ authored, reviewed, and refutable wherever their kinds carry a dimension. Its at
 its hypotheses.
 
 For a theorem, the hypotheses stand gathered in its statement. A model scatters them over its
-source, and the {ref "boundary-family"}[boundary audit] gathers them back: `#kind_boundary_audit
+source, and the {deftech}[boundary audit]{index}[boundary audit]
+({ref "boundary-family"}[the boundary family]) gathers them back: `#kind_boundary_audit
 ns …` lists every boundary site in a namespace — each entry, exit and crossing, with its tier
 and, for an attestation, its harvested reason — so the pinned report is the model's _statement_,
 the list of what it assumes. Pinned under
@@ -790,6 +807,9 @@ its rung at genuine binary32 is a bound rather than an equation. Those three
 sentences are one structure read at three carriers, not three structures.
 
 ## Representation parametricity (R10)
+%%%
+tag := "representation-parametricity"
+%%%
 
 *R10 — A quantity value is parametric in its numeric representation type.* The
 magnitude of a scalar quantity is carried at a *representation type* $`R`, a type
@@ -863,9 +883,12 @@ rung only because $`\mathbb{R}` totalizes $`x/0`; the executable rung's
 `Quantity.div_refines_exec` carries the divisor's nonzero decoded mantissa beside its
 finiteness hypotheses, which is where a zero denominator is actually caught.
 
-*Laws transfer across the ladder; side conditions do not.* That asymmetry is the
-counterpoint to everything above, and it is worth stating as a rule rather than as a
-property of one theorem. The bridge carries a *law* from the lawful carrier to the
+The real representations above and their complexifications, ordered from proof to
+execution, are the {deftech}[carrier ladder]{index}[carrier ladder]: each representation
+is a rung, and a definition written once over an abstract carrier is instantiated at
+every rung by one map. *Laws transfer across the ladder; side conditions do not.* That
+asymmetry is the counterpoint to everything above, and it is worth stating as a rule
+rather than as a property of one theorem. The bridge carries a *law* from the lawful carrier to the
 executable one at the cost of a single rounding step. It carries a *side condition* —
 a hypothesis a definition holds as a field, so that the degenerate case is not a term to
 be handled — not at all. The reason is visible in the statement: a condition phrased in
@@ -1730,14 +1753,24 @@ distinction — this is the dimension-1 disambiguation capstone in the
 {ref "units"}[Units chapter].
 
 # How to read the status
+%%%
+tag := "how-to-read-the-status"
+%%%
 
 Nodes that link a real declaration with `(lean := "PropertyKindCalculus.…")` report
 their *proved* status straight from the checked, sorry-free core. The nodes that link
 none are the authoring steps of the _write once, correctly_ recipe: they say how a model
 is composed, and carry nothing to prove. The headline deliverables are tagged `capstone`,
-and the status summary at the end reports the current counts.
+and the status summary at the end reports the current counts. The
+{deftech}[blueprint dependency graph]{index}[blueprint dependency graph] drawn beside that
+summary is the graph of these nodes and their `uses` edges — a picture of this document,
+and not one of the graphs the calculus itself defines; those are named and kept apart in
+{ref "capstones"}[the capstone chapter], and every term of the calculus is fixed by
+{ref "terminology"}[the dictionary].
 
 {include 0 PropertyKindCalculusBlueprint.Chapters.Spine}
+
+{include 0 PropertyKindCalculusBlueprint.Chapters.Capstones}
 
 {include 0 PropertyKindCalculusBlueprint.Chapters.Foundations}
 
@@ -1794,6 +1827,8 @@ and the status summary at the end reports the current counts.
 {include 0 PropertyKindCalculusBlueprint.Chapters.ModelTemplate}
 
 {include 0 PropertyKindCalculusBlueprint.Chapters.DeploymentTemplate}
+
+{include 0 PropertyKindCalculusBlueprint.Chapters.Terminology}
 
 {blueprint_graph}
 

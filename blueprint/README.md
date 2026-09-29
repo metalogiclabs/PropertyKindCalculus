@@ -8,8 +8,11 @@ status summary generated from the linked Lean code.
 
 ## What it documents
 
-29 chapters carrying **154 nodes, 34 of them capstones — every one of them
-`proved`**, each linking a real, sorry-free declaration through its `(lean := …)` field.
+31 chapters carrying **163 nodes, 37 of them capstones — all but 8 of them
+`proved`**, each proved node linking a real, sorry-free declaration through its
+`(lean := …)` field. The 8 not yet proved are the planned nodes of the capstone chapter:
+three capstone theorems and their supporting lemmas, stated with proof sketches before the
+declarations that will discharge them are written.
 The status summary and the dependency graph are therefore read off the checked source
 rather than asserted here; `scripts/check-doc-pins.py` gates these counts and the chapter
 list below against the chapter sources, so a new or renamed chapter fails the gate rather
@@ -18,7 +21,7 @@ than quietly going unlisted.
 | Group | Chapters |
 |---|---|
 | The foundation | Foundations: system, part, and the ontological square |
-| The spine | The Proved Spine · Write Once, Correctly · Metrological modularity · Using the library: annotations and generated indexes · External Cross-References |
+| The spine | The Proved Spine · Capstone theorems — what the calculus can do · Write Once, Correctly · Metrological modularity · Using the library: annotations and generated indexes · External Cross-References · Terminology — the dictionary and the index |
 | Applying it | Applying the calculus to a domain: the model template · Deploying a domain model: the deployment template |
 | The kind layer | The object type · Dedicated kinds-of-property · Extensivity · The Interaction Algebra (Flater Appendix C) · The Function Calculus and Complex-Valued Carriers (R12) |
 | Units and dimension | Units and the Dimension-1 Problem · Dimension as a Forgetful Functor · Scale-spanning units — a third unit category (R13) |
@@ -104,6 +107,13 @@ Two outputs are produced; both can be opened directly as files.
   read from the checked library, not asserted in prose.
 * Planned nodes carry an informal statement and a proof *sketch* only.
 * Source citations follow the core library: Dybkær by `§x.y`, Flater by section.
+* Technical terms come from the dictionary
+  (`terminology/PropertyKindCalculus/Terminology/Dictionary.lean`): the canonical phrase
+  at a concept's first mention, its sanctioned short form afterward; exactly one
+  `{deftech}[…]` per term, in the section the dictionary names, with `{index}[…]` beside it
+  and `{tech}[…]` at the significant mentions elsewhere. The Terminology chapter renders
+  the dictionary and the index; `scripts/check-doc-pins.py` refuses a retired phrasing
+  in any chapter or root document and a term defined zero or two times.
 
 ## Build scripts
 

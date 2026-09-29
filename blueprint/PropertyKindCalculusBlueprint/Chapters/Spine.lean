@@ -84,7 +84,7 @@ individuate otherwise-comparable kinds (width vs. height).
 :::
 
 :::definition "def_kindOfProperty" (parent := "spine_kind") (lean := "PropertyKindCalculus.KindOfProperty")
-A _kind-of-property_ (§6.19) bundles a terminological `id`, a `scale` (from {uses "def_scaleType"}[the scale types]), and an optional examination principle. A kind
+A {deftech}[kind-of-property]{index}[kind-of-property] (§6.19) bundles a terminological `id`, a `scale` (from {uses "def_scaleType"}[the scale types]), and an optional examination principle. A kind
 _is a kind-of-quantity_ (§13.3.1) iff its scale has magnitude (is at least
 ordinal).
 :::
