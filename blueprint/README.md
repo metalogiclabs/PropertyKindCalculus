@@ -78,15 +78,18 @@ library.
 
 ## Figures
 
-Three figures are hand-authored schematics rather than harvests: the architecture cake
-(what a proved status rests on), Lowe's square with the calculus's identifiers
-(Foundations), and the three layers with their two ladders (the capstone chapter). Their
+Three figures are hand-authored schematics rather than harvests: Lowe's square with the
+calculus's identifiers and the architecture cake (what a proved status rests on), both in
+the introduction, and the three layers with their two ladders (the capstone chapter). Their
 generators are the stdlib-only Python scripts under `scripts/figures/`, with the logo
 sources under `figures/logos/`; the SVGs they emit are committed under `figures/`, and
 `PropertyKindCalculusBlueprint/Figures.lean` reads each one at compile time for the
-`:::svg_figure` directive to inline — the same `Block.diagram` the Illuminate `diagram`
-code block renders through, so a schematic behaves as a drawn diagram does in every
-output. After editing a generator:
+`:::svg_figure "key" Figures.constant` directive to inline, with the directive's body under
+it: the first paragraph is the caption, any further paragraphs the legend. The render
+numbers the figures in document order and anchors each at `#figure-<key>`; the unnumbered
+*List of figures* page (`:::figure_list`) lists them with links to their places, and
+`{figref "key"}[]` renders *Figure n* as a link wherever the prose refers to one, so no
+number is ever typed by hand. After editing a generator:
 
 ```bash
 cd blueprint

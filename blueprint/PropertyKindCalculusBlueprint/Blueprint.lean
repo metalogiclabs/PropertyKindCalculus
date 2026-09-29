@@ -36,7 +36,6 @@ import PropertyKindCalculusBlueprint.Chapters.DeploymentTemplate
 import PropertyKindCalculusBlueprint.Chapters.Terminology
 import PropertyKindCalculusBlueprint.ItemIndex
 import PropertyKindCalculusBlueprint.TraceabilityTable
-import PropertyKindCalculusBlueprint.OntologicalSquare
 import PropertyKindCalculusBlueprint.Figures
 import PropertyKindCalculusBlueprint.References
 import PropertyKindCalculusBlueprint.Version
@@ -142,12 +141,18 @@ that something is. Lowe's four-category ontology
 vocabulary implies but never names. Two cuts make the four categories — universal
 against particular, and _substantial_, a thing, against
 _non-substantial_, a way a thing is — and every term of measurement lands in exactly one
-of the quadrants they produce. Here is Lowe's square (his Fig. 7.1), with the reading
-this calculus gives each corner set underneath his own:
+of the quadrants they produce. Here is Lowe's square (his Fig. 7.1), with the calculus's
+identifier for each corner set beneath his own term and its mechanism on each edge:
 
-```diagram (cssWidth := "38em")
-PropertyKindCalculusBlueprint.ontologicalSquare
-```
+:::svg_figure "ontological-square" PropertyKindCalculusBlueprint.Figures.loweSquare
+Lowe's ontological square with the calculus's identifiers at its corners and its
+mechanisms on its edges.
+
+The two heavy edges are the two type indices of an individual quantity — the object index
+`o` along the bottom and the kind index `k` down the right — and the plates behind the
+_Modes_ corner are the carrier `R`, which indexes that corner alone. Each corner's instance
+slot is left empty; a model fills it.
+:::
 
 The four corners, taken in the order the square draws them, top row first (the numbers
 are Lowe's):
@@ -248,6 +253,23 @@ boundary is exact, not rhetorical. The result is a modeling discipline whose
 specification documents — rendered from the checked sources — are verifiable rather than
 merely descriptive.
 
+PKC is a library, and where it stands among the libraries it requires is worth drawing
+before anything is proved about it. A domain model written in the calculus traces its trust
+down through PhysLib, for dimensions and units, and cslib, for the labelled transition
+systems in which the {ref "capstones"}[capstone chapter] states its bisimulation — the two
+peers on Mathlib — and through TorchLean, with FloatLib under it, for the tensor carriers and
+the executable float word, to Mathlib and then to the Lean kernel with its three classical
+axioms, the one band that is believed rather than derived, checked, or enumerated:
+
+:::svg_figure "architecture-cake" PropertyKindCalculusBlueprint.Figures.architectureCake
+The stack a domain model's trust traces down through: PhysLib and cslib as peers on
+Mathlib, TorchLean with FloatLib beneath it, and the Lean kernel at the floor.
+
+Each band says what it costs a reviewer in trust, and a filled square marks a property the
+build checks. The figure is a picture of a dependency graph — who requires whom, as the
+package manifests record it — and carries no measured claim of its own.
+:::
+
 This blueprint is the design map for that formalization: every theorem node names the
 declaration that discharges it and reports that declaration's checked status, with the
 headline results tagged *capstone*. The dependency graph and a status summary come at the
@@ -276,6 +298,18 @@ derived from.
 Algorithm", along with this research, was carried out at the Jet Propulsion Laboratory,
 California Institute of Technology, under a contract with the National Aeronautics and
 Space Administration.
+
+# List of figures
+%%%
+tag := "figures"
+number := false
+%%%
+
+The document's figures, numbered in the order they appear; each entry links to its figure
+and names the section it stands in.
+
+:::figure_list
+:::
 
 # What PropertyKindCalculus provides
 
@@ -1388,20 +1422,11 @@ boundary where a premise _fails_, shown genuinely excluded — so that no requir
 satisfied *vacuously*: an empty quantifier or an unsatisfiable hypothesis would leave a
 theorem true but empty, and the witness is what rules that out.
 
-What a _proved_ status rests on is a stack, and the stack is worth drawing once. A domain
-model written in the calculus traces its trust down through the libraries the calculus
-requires — PhysLib for dimensions and units, and cslib for the labelled transition systems
-in which the {ref "capstones"}[capstone chapter] states its bisimulation, the two peers on
-Mathlib; TorchLean, with FloatLib under it, for the tensor carriers and the executable
-float word — to Mathlib and then to the Lean kernel with its three classical axioms, the one
-band that is believed rather than derived, checked, or enumerated:
-
-:::svg_figure PropertyKindCalculusBlueprint.Figures.architectureCake
-:::
-
-Each band says what it costs a reviewer in trust, and a filled square marks a property the
-build checks. The figure is a picture of a dependency graph — who requires whom, as the
-package manifests record it — and carries no measured claim of its own.
+What a _proved_ status rests on is the stack {figref "architecture-cake"}[] draws: a
+domain model's trust traces down through PhysLib and cslib, the two peers on Mathlib, and
+through TorchLean with FloatLib under it, to Mathlib and then to the Lean kernel with its
+three classical axioms — the one band that is believed rather than derived, checked, or
+enumerated. The axiom profile pinned above is that band's cost, stated per theorem.
 
 # Why a calculus, not a taxonomy
 

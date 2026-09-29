@@ -132,8 +132,9 @@ realizes a law the dimension layer has judged coherent.
 The three layers and the two ladders, drawn on one module — `y = a · b + e`, the module the
 bisimulation witnesses below decide — seen at three granularities:
 
-:::svg_figure PropertyKindCalculusBlueprint.Figures.threeLayers
-:::
+:::svg_figure "three-layers" PropertyKindCalculusBlueprint.Figures.threeLayers
+The three layers and their two ladders, drawn on the module `y = a · b + e` at three
+granularities.
 
 The middle band is the metrological provenance hypergraph, the kinded one. The top band is
 its image under the dimension functor, node by node and occurrence by occurrence, with the
@@ -144,6 +145,7 @@ vertices no node of the hypergraph names, the silent steps that make the bisimul
 and the `additive` occurrence expands componentwise, with no interior at all. `R` runs from
 each node to each of its observable components; the dotted boxes are the realizations of
 the two occurrences.
+:::
 
 # The seal of a module — the provenance hypergraph
 

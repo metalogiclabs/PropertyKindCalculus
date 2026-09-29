@@ -14,11 +14,19 @@ This pass rewrites the link *targets* to spell out `index.html`:
     find/?domain=...            -> find/index.html?domain=...
     ./   (root home link)       -> index.html      (base already points to root)
     ./../  (deep home link)     -> index.html
+    ""   (home link)            -> index.html
+    #anchor  (root-page anchor) -> index.html#anchor
+
+The last two are the same case as the home links. Every page's `<base href>` is the
+site root, so an empty href and a bare `#anchor` both denote the *root* page (Verso
+writes a link to a root-page target — a figure in the introduction, say — as a bare
+fragment); over file:// they resolve to the root directory, and a bare fragment is
+never a same-page link on a subpage. A bare `#` (a script hook) is left alone.
 
 It is safe for the served site too: over HTTP `Chapter/index.html` resolves the
 same as `Chapter/`. It deliberately leaves alone: the `<base href>` tag itself,
-external/scheme links, pure `#fragment` links, and asset links (.css/.js, which
-never end in `/`). Re-running is idempotent.
+external/scheme links, the bare `#`, and asset links (.css/.js, which never end
+in `/`). Re-running is idempotent.
 """
 import re
 import sys
@@ -31,8 +39,12 @@ PURE_DOTS = re.compile(r'^(?:\.\.?/)+$')
 
 
 def fix_href(value: str) -> str:
-    if not value or value.startswith("#"):
-        return value                      # empty or same-page fragment
+    if not value:
+        return "index.html"               # home link: the base is the site root
+    if value == "#":
+        return value                      # a script hook, not a navigation
+    if value.startswith("#"):
+        return "index.html" + value       # a root-page anchor (see the docstring)
     if "://" in value or value.split(":", 1)[0] in ("mailto", "data", "javascript"):
         return value                      # external / non-navigational scheme
     # Split off the #fragment / ?query suffix; only the path part is rewritten.
