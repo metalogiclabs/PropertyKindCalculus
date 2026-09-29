@@ -256,11 +256,11 @@ stated as a theorem whose hypotheses the build discharges? Three capstone theore
 that question, and they are the subject of {ref "capstones"}[the capstone chapter]: the
 _seal of a module_ — once its gates are declared, no other raw datum reaches its outputs;
 the _seal of the computation_ — the same guarantee for the code at every carrier, with
-every kind change at a declared crossing; and _dimensional homogeneity_ — dimension is a
-homomorphism along every path of a well-formed model. That chapter is written
-blueprint-first: the properties are architected and their proofs sketched there before the
-code-level refactoring each one calls for is done, and its nodes turn from _planned_ to
-_proved_ as the declarations land.
+every kind change under an occurrence the source states; and _dimensional homogeneity_ —
+dimension is a homomorphism along every path of a well-formed model. That chapter was
+written blueprint-first: the properties were architected and their proofs sketched there
+before the declarations were written, and every node now links the declaration that
+discharges it.
 
 The whole blueprint is also available as a single paginated document:
 [download the PDF](PropertyKindCalculus-Blueprint.pdf).

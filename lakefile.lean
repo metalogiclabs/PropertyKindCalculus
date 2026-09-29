@@ -110,6 +110,19 @@ require «TorchLean» from git
   "combined-4.34"
   with torchLeanOpts
 
+-- cslib (the Lean community's computer-science library) backs *only* the `Graph` library's
+-- bisimulation module: the labelled transition systems, `IsBisimulation`,
+-- `IsWeakBisimulation` and `saturate` the capstone chapter's kind-transporting weak
+-- bisimulation is stated with, so the relation between the provenance hypergraph and the
+-- computational tape graph is a bisimulation in the textbook sense (Sangiorgi 2011), not
+-- a local re-definition. Pinned to the commit whose manifest requires Mathlib `v4.34.0`
+-- (the same revision PhysLib and TorchLean resolve to) under the `v4.34.0` toolchain;
+-- the next commit moves to the `v4.35.0` release candidates. The core spine never
+-- imports it.
+require «cslib» from git
+  "https://github.com/leanprover/cslib.git" @
+  "990e65a685bed413f43b139db900a36ad5322a10"
+
 -- NOTE (2026-08-24): there is deliberately **no mathlib require here**, for the same
 -- reason there is no doc-gen4 one (below). Mathlib arrives transitively, and the two
 -- packages that bring it agree: PhysLib `master` and TorchLean `combined-4.34` each require
@@ -213,6 +226,7 @@ lean_lib «Dimension» where
     .one `PropertyKindCalculus.Interaction,
     .one `PropertyKindCalculus.Function,
     .one `PropertyKindCalculus.DimensionalCoverage,
+    .one `PropertyKindCalculus.DimensionalHomogeneity,
     .one `PropertyKindCalculus.KindPrincipleFree,
     .one `PropertyKindCalculus.ExaminationCoverage,
     .one `PropertyKindCalculus.AggregationLaws,

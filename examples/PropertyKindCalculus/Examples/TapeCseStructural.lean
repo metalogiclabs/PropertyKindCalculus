@@ -38,6 +38,8 @@ module
 
 public import PropertyKindCalculus.Torch.Paradigm.TapeCse
 meta import PropertyKindCalculus.Torch.Paradigm.TapeCse
+public import PropertyKindCalculus.Torch.Paradigm.TapeEval
+meta import PropertyKindCalculus.Torch.Paradigm.TapeEval
 
 @[expose] public section Blanket
 
@@ -45,6 +47,7 @@ open Spec TorchLean
 open TorchLean TorchLean.Tensor
 open Runtime.Autograd (Tape Node TapeM)
 open PropertyKindCalculus.Paradigm.TapeCSE (nodeKey cseCompact)
+open PropertyKindCalculus.Paradigm.TapeCodegen (WF wf_of_bounded)
 
 namespace PropertyKindCalculus.Examples.TapeCseStructural
 
@@ -138,11 +141,8 @@ theorem key_bits (rm : Array Nat) (n : Node Float) :
 
 /-! ## Well-formedness and the loop invariant -/
 
-/-- A recorded tape is **well-formed** when every node's parents are strictly earlier ids (the usual
-tape build invariant: every op appends after its operands). Every tape a `[NumCarrier]` kernel records
-is well-formed by construction. -/
-def WF (t : Tape Float) : Prop :=
-  ∀ id nd, t.getNode? id = some nd → ∀ p ∈ nd.parents, p < id
+/-! `WF` — every node's parents are strictly earlier ids — is the library's tape build invariant
+(`paradigm.tape_eval`), opened above. -/
 
 /-- **The loop invariant.** After `cseCompact` has processed `k` nodes with state `(newTape, remap,
 memo)`:
@@ -306,14 +306,6 @@ theorem cseCompact_preserves_stored (t : Tape Float) (hwf : WF t) (id : Nat) (h 
 The corollaries are hypothetical (`WF t`, `id < t.size`); a witness confirms those hypotheses are
 jointly satisfiable by a real tape *with an op node*, so nothing above is vacuously true. Every tape a
 `[NumCarrier]` kernel records is well-formed by construction — here is a minimal concrete one. -/
-
-/-- Well-formedness of a concrete tape reduces to a decidable bounded check. -/
-theorem wf_of_bounded (t : Tape Float)
-    (h : ∀ id, (hid : id < t.size) → ∀ p ∈ (t.nodes[id]'hid).parents, p < id) : WF t := by
-  intro id nd hnd p hp
-  rw [Tape.getNode?] at hnd
-  obtain ⟨hid, heq⟩ := Array.getElem?_eq_some_iff.mp hnd
-  exact h id hid p (by rw [heq]; exact hp)
 
 /-- A concrete well-formed tape: two named input leaves and one `add` op reading both. -/
 def demoTape : Tape Float :=

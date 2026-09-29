@@ -125,9 +125,35 @@ forward closure of the reversed incidence. -/
 /-- The sources among an output's ancestors: the budget's term list — where standard
 uncertainties attach when the graph's edges carry a propagation law — and the source set
 whose attached conditions a downstream flag may claim for this output. -/
-def influencers (g : Provenance ν κ) (out : ν) : List ν :=
+@[expose] def influencers (g : Provenance ν κ) (out : ν) : List ν :=
   let anc := g.ancestorsOf [out]
   g.sources.filter anc.contains
+
+/-! ## The seal of a module — the executable form
+
+`Graph.Seal` proves that a well-formed graph's outputs rest on nothing undeclared: every
+node in an output's pedigree is a source, or the result of an occurrence whose operands
+are themselves in the pedigree. The two definitions here are that conclusion as a
+decidable check, so an instance pins it by `decide` beside the well-formedness it follows
+from, and a mutant that fails well-formedness — an anonymous mint wired into an output —
+is seen to fail the conclusion too, which is the discrimination the capstone owes. -/
+
+/-- The undeclared leaves of an output: the nodes in its pedigree that are neither sources
+nor the result of any occurrence. An anonymous mint, or a value that entered through no
+declared gate. Empty at every output of a well-formed graph (`Graph.Seal.seal`). -/
+@[expose] def undeclaredLeaves (g : Provenance ν κ) (y : ν) : List ν :=
+  (g.ancestorsOf [y]).filter fun a =>
+    !g.sources.contains a && !g.occurrences.any (·.result == a)
+
+/-- **The seal, executable**: no output has an undeclared leaf. -/
+@[expose] def sealed (g : Provenance ν κ) : Bool :=
+  g.outputs.all fun y => (g.undeclaredLeaves y).isEmpty
+
+/-- `Prop`-level seal, for statements and `decide`. -/
+@[expose] def Sealed (g : Provenance ν κ) : Prop := g.sealed = true
+
+instance (g : Provenance ν κ) : Decidable g.Sealed :=
+  inferInstanceAs (Decidable (g.sealed = true))
 
 /-! ## The per-output ledgers -/
 
@@ -145,7 +171,7 @@ structure AssumptionLedger (ν κ : Type) where
 deriving Repr, Inhabited, BEq
 
 /-- The assumption ledger of `out` (see `AssumptionLedger`). -/
-def assumptionLedger (g : Provenance ν κ) (out : ν) : AssumptionLedger ν κ :=
+@[expose] def assumptionLedger (g : Provenance ν κ) (out : ν) : AssumptionLedger ν κ :=
   let anc := g.ancestorsOf [out]
   { ports := g.ports.filter fun p => !p.dir.produced && anc.contains p.node
     gated := (g.intros.filter fun i => i.tier == .gated && anc.contains i.node).map (·.node)
@@ -172,7 +198,7 @@ structure TrustSplit (ν : Type) where
 deriving Repr, Inhabited, BEq
 
 /-- The trust decomposition of `out` (see `TrustSplit`). -/
-def trustSplit (g : Provenance ν κ) (out : ν) : TrustSplit ν :=
+@[expose] def trustSplit (g : Provenance ν κ) (out : ν) : TrustSplit ν :=
   let anc := g.ancestorsOf [out]
   { derived := (g.intros.filter fun i => i.tier == .derived && anc.contains i.node).map (·.node)
     gated := (g.intros.filter fun i => i.tier == .gated && anc.contains i.node).map (·.node)

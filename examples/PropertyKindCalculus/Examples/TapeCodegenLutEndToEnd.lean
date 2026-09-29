@@ -35,8 +35,9 @@ open PropertyKindCalculus.Paradigm (TapeBuilder NumCarrier LutTable LutInterp lu
 open PropertyKindCalculus.Paradigm.TapeParity
 open PropertyKindCalculus.Paradigm.TapeFaithful
 open PropertyKindCalculus.Paradigm.TapeCodegen
+open PropertyKindCalculus.Paradigm.TapeCodegen (getD_push_size getD_push_lt)
 open PropertyKindCalculus.Examples.TapeCodegenEndToEnd
-  (getD_push_size getD_push_lt tapeAdd_addNode tapeSub_addNode tapeMul_addNode)
+  (tapeAdd_addNode tapeSub_addNode tapeMul_addNode)
 open PropertyKindCalculus.Examples.TapeCodegenLut
   (demoLut lutModel inLeafV envLayer envU envBias demoTables cOpT_lutfetch)
 

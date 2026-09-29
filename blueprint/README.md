@@ -8,11 +8,11 @@ status summary generated from the linked Lean code.
 
 ## What it documents
 
-31 chapters carrying **163 nodes, 37 of them capstones — all but 8 of them
-`proved`**, each proved node linking a real, sorry-free declaration through its
-`(lean := …)` field. The 8 not yet proved are the planned nodes of the capstone chapter:
-three capstone theorems and their supporting lemmas, stated with proof sketches before the
-declarations that will discharge them are written.
+31 chapters carrying **163 nodes, 37 of them capstones — all of them
+`proved`**, each node linking a real, sorry-free declaration through its
+`(lean := …)` field. The capstone chapter was written blueprint-first — three capstone
+theorems and their supporting lemmas, stated with proof sketches before the declarations
+that discharge them — and its nodes now link those declarations.
 The status summary and the dependency graph are therefore read off the checked source
 rather than asserted here; `scripts/check-doc-pins.py` gates these counts and the chapter
 list below against the chapter sources, so a new or renamed chapter fails the gate rather

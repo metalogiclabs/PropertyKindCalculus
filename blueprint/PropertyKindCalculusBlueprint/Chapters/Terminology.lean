@@ -7,6 +7,10 @@ import PropertyKindCalculus
 -- aggregator does not carry — the harvest (KindIncidence), the graph library, and the tape.
 import PropertyKindCalculus.KindIncidence
 import PropertyKindCalculus.Graph.Flow
+import PropertyKindCalculus.Graph.Seal
+import PropertyKindCalculus.Graph.Bisimulation
+import PropertyKindCalculus.DimensionalHomogeneity
+import PropertyKindCalculus.Torch.Paradigm.TapeSeal
 import PropertyKindCalculus.Torch.Paradigm.TapeParity
 import PropertyKindCalculus.Torch.Paradigm.TapeCse
 import PropertyKindCalculus.Interaction

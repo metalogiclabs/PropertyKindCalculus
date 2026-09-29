@@ -49,125 +49,16 @@ meta import PropertyKindCalculus.Examples.TapeCodegenEndToEnd
 
 open Spec TorchLean TorchLean.Tensor
 open Runtime.Autograd (Tape Node)
-open PropertyKindCalculus.Paradigm.TapeCodegen (evalTape nodeScalar cOp)
+open PropertyKindCalculus.Paradigm.TapeCodegen (evalTape nodeScalar cOp stepVal WF evalTape_node_value)
 open PropertyKindCalculus.Paradigm.TapeCSE (cseCompact)
 open PropertyKindCalculus.Examples.TapeCseStructural
-  (WF cseCompact_structural cseCompact_wellFormed demoTape demoTape_size demoTape_wf)
-open PropertyKindCalculus.Examples.TapeCodegenEndToEnd
-  (stepVal evalTape_eq_foldlM getD_push_lt getD_push_size recordRaw)
+  (cseCompact_structural cseCompact_wellFormed demoTape demoTape_size demoTape_wf)
+open PropertyKindCalculus.Examples.TapeCodegenEndToEnd (recordRaw)
 
 namespace PropertyKindCalculus.Examples.TapeCseDenotation
 
-/-! ## The `evalTape` value-characterisation (a `foldlM` invariant) -/
-
-/-- Pushing a fresh value onto the value array does not change `stepVal` of a node whose parents are all
-already in range — the interpreter reads `vals.getD p 0` only at parent indices, and `getD` below the
-array size is push-invariant. -/
-theorem stepVal_push_stable (env : String → Float) (acc : Array Float) (v : Float) (nd : Node Float)
-    (hp : ∀ p ∈ nd.parents, p < acc.size) :
-    stepVal env (acc.push v) nd = stepVal env acc nd := by
-  unfold stepVal
-  by_cases he : nd.parents.isEmpty = true
-  · simp only [he, ite_true]
-  · simp only [ite_eq_right he]
-    cases hn : nd.name with
-    | none => rfl
-    | some nm =>
-      simp only
-      congr 1
-      exact congrArg Array.toList (Array.map_congr_left (fun p hp' => getD_push_lt acc v p (hp p hp')))
-
-/-- **The `foldlM` invariant, over a node sublist with an id offset `s`.** If the fold over `l` (the
-nodes at ids `s, s+1, …`) succeeds, then every processed id's value is exactly what `stepVal` computes
-there against the final array — the local recurrence strong induction consumes. Well-formedness (parents
-precede children) is what makes each slot's `stepVal` stable as later slots are appended. Proved by list
-induction because core has no `Array.foldlM_induction`. -/
-theorem foldlM_stepVal_spec (env : String → Float) (t : Tape Float) (hwf : WF t) :
-    ∀ (l : List (Node Float)) (s : Nat) (acc out : Array Float),
-      acc.size = s →
-      (∀ i (hi : i < l.length), t.getNode? (s + i) = some l[i]) →
-      (∀ id, id < s → ∀ nd, t.getNode? id = some nd → stepVal env acc nd = .ok (acc.getD id 0.0)) →
-      List.foldlM (fun vals n => (stepVal env vals n).map (fun v => vals.push v)) acc l = .ok out →
-      out.size = s + l.length ∧
-      (∀ id, id < s + l.length → ∀ nd, t.getNode? id = some nd →
-        stepVal env out nd = .ok (out.getD id 0.0)) := by
-  intro l
-  induction l with
-  | nil =>
-    intro s acc out hsz _ hproc hrun
-    rw [List.foldlM_nil] at hrun
-    have hout : out = acc := by injection hrun with h; exact h.symm
-    subst hout
-    exact ⟨by simpa using hsz, by simpa using hproc⟩
-  | cons hd tl ih =>
-    intro s acc out hsz hget hproc hrun
-    rw [List.foldlM_cons] at hrun
-    have hhd : t.getNode? s = some hd := by have := hget 0 (by simp); simpa using this
-    have hhd_par : ∀ p ∈ hd.parents, p < s := hwf s hd hhd
-    cases hsv : stepVal env acc hd with
-    | error e =>
-        rw [hsv] at hrun
-        simp [Except.map, bind, Except.bind] at hrun
-    | ok v =>
-        rw [hsv] at hrun
-        simp only [Except.map, bind, Except.bind] at hrun
-        have hsz' : (acc.push v).size = s + 1 := by rw [Array.size_push, hsz]
-        have hproc' : ∀ id, id < s + 1 → ∀ nd, t.getNode? id = some nd →
-            stepVal env (acc.push v) nd = .ok ((acc.push v).getD id 0.0) := by
-          intro id hid nd hnd
-          rcases Nat.lt_succ_iff_lt_or_eq.mp hid with hlt | heq
-          · have hnd_par : ∀ p ∈ nd.parents, p < acc.size := by
-              intro p hp; have := hwf id nd hnd p hp; omega
-            rw [stepVal_push_stable env acc v nd hnd_par, hproc id hlt nd hnd,
-              getD_push_lt acc v id (by rw [hsz]; exact hlt)]
-          · subst heq
-            have hnne : nd = hd := by
-              have h2 : some nd = some hd := hnd.symm.trans hhd
-              rwa [Option.some.injEq] at h2
-            subst hnne
-            have hnd_par : ∀ p ∈ nd.parents, p < acc.size := by
-              intro p hp; rw [hsz]; exact hhd_par p hp
-            rw [stepVal_push_stable env acc v nd hnd_par, hsv, ← hsz, getD_push_size]
-        have hget' : ∀ i (hi : i < tl.length), t.getNode? ((s + 1) + i) = some tl[i] := by
-          intro i hi
-          have hlt1 : i + 1 < (hd :: tl).length := by simp only [List.length_cons]; omega
-          have hidx : s + (i + 1) = (s + 1) + i := by omega
-          have key := hget (i + 1) hlt1
-          rw [List.getElem_cons_succ] at key
-          exact hidx ▸ key
-        obtain ⟨ho1, ho2⟩ := ih (s + 1) (acc.push v) out hsz' hget' hproc' hrun
-        refine ⟨?_, ?_⟩
-        · simp only [List.length_cons]; omega
-        · intro id hid nd hnd
-          simp only [List.length_cons] at hid
-          exact ho2 id (by omega) nd hnd
-
-/-- **`evalTape` node-value characterisation.** A successful `evalTape` run assigns to slot `id` exactly
-the value `stepVal` computes for node `id` against the final array (specialisation of the invariant at
-offset `0`). -/
-theorem evalTape_node_value (env : String → Float) (t : Tape Float) (hwf : WF t)
-    (vals : Array Float) (hv : evalTape env t = .ok vals) :
-    vals.size = t.size ∧
-    ∀ id nd, t.getNode? id = some nd → stepVal env vals nd = .ok (vals.getD id 0.0) := by
-  rw [evalTape_eq_foldlM, ← Array.foldlM_toList] at hv
-  have hget0 : ∀ i (hi : i < t.nodes.toList.length), t.getNode? (0 + i) = some t.nodes.toList[i] := by
-    intro i hi
-    rw [Nat.zero_add]
-    have hi' : i < t.nodes.size := by rw [← Array.length_toList]; exact hi
-    simp only [Tape.getNode?]
-    rw [Array.getElem_toList hi']
-    exact Array.getElem?_eq_getElem hi'
-  obtain ⟨hsz, hproc⟩ := foldlM_stepVal_spec env t hwf t.nodes.toList 0 #[] vals
-    (by simp) hget0 (by intro id hid; exact absurd hid (Nat.not_lt_zero id)) hv
-  rw [Nat.zero_add, Array.length_toList] at hsz hproc
-  refine ⟨hsz, ?_⟩
-  intro id nd hnd
-  have hid : id < t.nodes.size := by
-    have hnd' := hnd
-    rw [Tape.getNode?] at hnd'
-    obtain ⟨hlt, _⟩ := Array.getElem?_eq_some_iff.mp hnd'
-    exact hlt
-  exact hproc id hid nd hnd
+/-! The `foldlM` invariant and the node-value characterisation `evalTape_node_value` are library
+facts now (`paradigm.tape_eval`, opened above). -/
 
 /-! ## The pointwise `evalTape`-denotation equality -/
 
@@ -332,7 +223,7 @@ def demoEnv : String → Float := fun s => if s = "a" then 2.0 else if s = "b" t
 /-- info: 'PropertyKindCalculus.Examples.TapeCseDenotation.cseCompact_denotation_of_named' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms cseCompact_denotation_of_named
 
-/-- info: 'PropertyKindCalculus.Examples.TapeCseDenotation.evalTape_node_value' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'PropertyKindCalculus.Paradigm.TapeCodegen.evalTape_node_value' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms evalTape_node_value
 
 end PropertyKindCalculus.Examples.TapeCseDenotation

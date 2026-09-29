@@ -13,6 +13,7 @@ public import PropertyKindCalculus.Tests.Dimension.AngleReform
 public import PropertyKindCalculus.Tests.Dimension.IsqBase
 public import PropertyKindCalculus.Tests.Dimension.BoundsReal
 public import PropertyKindCalculus.Tests.Dimension.DimensionalCoverage
+public import PropertyKindCalculus.Tests.Dimension.Homogeneity
 public import PropertyKindCalculus.Tests.Dimension.ExaminationCoverage
 public import PropertyKindCalculus.Tests.Dimension.Frames
 public import PropertyKindCalculus.Tests.Dimension.AggregationLaws

@@ -57,41 +57,11 @@ abbrev S : Shape := Shape.scalar
 abbrev TB := TapeBuilder S
 abbrev T := Tensor Float S
 
-/-! ## `evalTape` as a fold, and its one-node append law
+/-! ## The one-node append law, specialised
 
-`evalTape` (`paradigm.tape_codegen`) is a `for`-loop building a value array. To reason about it we
-reformulate it as an `Except`-monadic left fold over the nodes and prove that extending a tape by one
-node extends its value array by one `stepVal`. -/
-
-/-- The loop body of `evalTape`, one node at a time. -/
-def stepVal (env : String → Float) (vals : Array Float) (n : Node Float) : Except String Float :=
-  if n.parents.isEmpty then
-    match n.name with
-    | some nm => pure (env nm)
-    | none => pure (nodeScalar n)
-  else
-    match n.name with
-    | some nm => cOp nm ((n.parents.map (fun p => vals.getD p 0.0)).toList)
-    | none => .error "tape_codegen: op node with no op name"
-
-theorem evalTape_eq_foldlM (env : String → Float) (t : Tape Float) :
-    evalTape env t
-      = t.nodes.foldlM (fun vals n => (stepVal env vals n).map (fun v => vals.push v)) #[] := by
-  unfold evalTape stepVal
-  simp only [Array.mkEmpty_eq, bind_pure_comp, Array.forIn_yield_eq_foldlM, bind_pure]
-  rfl
-
-/-- The empty tape evaluates to the empty value array. -/
-theorem evalTape_empty (env : String → Float) : evalTape env (Tape.empty : Tape Float) = .ok #[] := by
-  rw [evalTape_eq_foldlM]; rfl
-
-/-- **Append law for `evalTape`.** Extending a tape by one node extends its value array by
-evaluating that node against the already-computed values. -/
-theorem evalTape_addNode (env : String → Float) (t : Tape Float) (n : Node Float) :
-    evalTape env (t.addNode n).1
-      = (evalTape env t) >>= fun vals => (stepVal env vals n).map (fun v => vals.push v) := by
-  rw [evalTape_eq_foldlM env (t.addNode n).1, evalTape_eq_foldlM env t]
-  simp only [Tape.addNode, Array.foldlM_push]
+`stepVal`, `evalTape_eq_foldlM`, `evalTape_empty`, `evalTape_addNode` and the two `getD`/`push`
+lemmas are library facts now (`paradigm.tape_eval`, namespace `TapeCodegen`, opened above); what
+stays here is the one fact about a *constant scalar leaf* the bridge below needs. -/
 
 /-- `nodeScalar` of a constant scalar leaf is its fill value. -/
 theorem nodeScalar_scalarLeaf (x : Float) :
@@ -99,13 +69,6 @@ theorem nodeScalar_scalarLeaf (x : Float) :
                  backward := fun _ => .ok #[] } = x := by
   simp [nodeScalar, Tensor.full, TorchLean.Tensor.Internal.Rep.const,
     TorchLean.Tensor.Internal.Rep.ofFlatFn, TorchLean.Storage.toArray_ofFn, Spec.SomeTensor.ofTensor]
-
-theorem getD_push_size (vals : Array Float) (x : Float) :
-    (vals.push x).getD vals.size 0.0 = x := by simp
-
-theorem getD_push_lt (vals : Array Float) (x : Float) (i : Nat) (h : i < vals.size) :
-    (vals.push x).getD i 0.0 = vals.getD i 0.0 := by
-  simp [Array.getElem?_push_lt h, Array.getElem?_eq_getElem h]
 
 /-! ## The combined codegen-faithfulness bridge -/
 
@@ -488,7 +451,8 @@ theorem stepVal_of_op (env : String → Float) (vals : Array Float) (m : Node Fl
       = (match m.name with
          | some nm => cOp nm ((m.parents.map (fun p => vals.getD p 0.0)).toList)
          | none => .error "tape_codegen: op node with no op name") := by
-  simp [stepVal, h]
+  simp only [stepVal, h, Bool.false_eq_true, ↓reduceIte]
+  rfl
 
 /-- **The merge key is denotation-sound for op nodes.** If two op nodes share a `nodeKey` (so
 `cseCompact` may collapse them onto one), the interpreter assigns them the same value on every value

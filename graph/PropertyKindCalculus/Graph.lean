@@ -1,6 +1,8 @@
 module
 
 public import PropertyKindCalculus.Graph.Flow
+public import PropertyKindCalculus.Graph.Seal
+public import PropertyKindCalculus.Graph.Bisimulation
 public import PropertyKindCalculus.Graph.IncidenceQuiver
 public import PropertyKindCalculus.Graph.KindGraph
 public import PropertyKindCalculus.Graph.Footprint

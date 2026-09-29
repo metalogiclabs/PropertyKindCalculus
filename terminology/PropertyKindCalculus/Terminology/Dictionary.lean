@@ -233,7 +233,8 @@ def dictionary : List Term :=
                 nothing — unlike the provenance hypergraph, whose occurrences are objects \
                 apart from its nodes. The object the second capstone relates to the \
                 provenance hypergraph.",
-      decls := [`Runtime.Autograd.Node],
+      decls := [`PropertyKindCalculus.Paradigm.TapeGraph,
+                `PropertyKindCalculus.Paradigm.TapeCodegen.ofTape, `Runtime.Autograd.Node],
       definedIn := "capstones",
       avoid := ["computational graph", "elementwise DAG", "megakernel DAG"],
       seeAlso := ["tape", "metrological provenance hypergraph",
@@ -267,7 +268,15 @@ def dictionary : List Term :=
                 of a carrier-level expansion, a bisimulation because it simulates in both \
                 directions — every occurrence realized on the tape, every tape path \
                 projected to a hypergraph path — and along it the hypergraph's kinds are \
-                transported onto the tape graph.",
+                transported onto the tape graph. A weak bisimulation in the textbook sense, \
+                over labelled transition systems: the provenance layer's hops labelled by \
+                family and operand position, the tape's edges labelled through the match, \
+                wires and interior steps silent. As data it is a match — each node with the \
+                tape vertices realizing it, each occurrence with the interior of its \
+                sub-graph — whose acceptance is decidable.",
+      decls := [`PropertyKindCalculus.Paradigm.Match, `PropertyKindCalculus.Paradigm.Match.accepts,
+                `PropertyKindCalculus.Paradigm.Match.weak,
+                `PropertyKindCalculus.Paradigm.Match.isWeakBisimulation_weak],
       definedIn := "capstones",
       avoid := ["kind-transporting simulation"],
       seeAlso := ["metrological provenance hypergraph", "computational tape graph",
@@ -275,22 +284,29 @@ def dictionary : List Term :=
   , { key := "contracted tape graph",
       gloss := "The computational tape graph with each realized occurrence's sub-graph \
                 collapsed to one ordered hyperedge — its operands the sub-graph's frontier \
-                in operand order, its result the sub-graph's root, its label the family; \
-                defined when every sub-graph is convex, interior-private, disjoint from \
-                the others, and the sub-graphs cover every operation. On it the \
-                kind-transporting weak bisimulation becomes strong, the silent steps gone.",
+                in operand order, its results the sub-graph's roots, its label the family; \
+                defined under the clauses acceptance decides of the sub-graphs — closed, \
+                interior-private, progressing, used, pairwise disjoint, covering every \
+                operation. On it the kind-transporting weak bisimulation becomes strong, \
+                the silent steps gone.",
+      decls := [`PropertyKindCalculus.Paradigm.Match.contracted,
+                `PropertyKindCalculus.Paradigm.Match.isBisimulation_contracted],
       definedIn := "capstones",
       seeAlso := ["computational tape graph", "kind-transporting weak bisimulation"] }
   , { key := "seal of a module",
       gloss := "The first capstone: once a module's gates are declared, every leaf of an \
                 output's pedigree is a declared source — no undeclared raw datum reaches \
                 the outputs.",
+      decls := [`PropertyKindCalculus.Provenance.pedigree_seal,
+                `PropertyKindCalculus.Provenance.sealed],
       definedIn := "capstones",
       seeAlso := ["seal of the computation", "pedigree"] }
   , { key := "seal of the computation",
       gloss := "The second capstone: the seal of a module carried onto the computational \
                 tape graph at every carrier — an output depends only on its influencers and \
-                the listed constants, and every kind change sits at a declared crossing.",
+                the listed constants, and every kind change in the computation is one an \
+                occurrence of the hypergraph states.",
+      decls := [`PropertyKindCalculus.Paradigm.TapeSeal.semantic_seal],
       definedIn := "capstones",
       seeAlso := ["seal of a module", "kind-transporting weak bisimulation",
                   "denotation bridge"] }
@@ -298,7 +314,9 @@ def dictionary : List Term :=
       gloss := "The third capstone: along every occurrence of a well-formed provenance \
                 hypergraph the dimension of the result is the one the family's rule \
                 computes from the operands — dimension is a homomorphism along every path.",
-      decls := [`PropertyKindCalculus.InteractionAlgebra.dim_homomorphism],
+      decls := [`PropertyKindCalculus.DimensionalHomogeneity.dimensional_homogeneity,
+                `PropertyKindCalculus.Provenance.homogeneity,
+                `PropertyKindCalculus.InteractionAlgebra.dim_homomorphism],
       definedIn := "capstones",
       seeAlso := ["seal of a module"] }
   , { key := "blueprint dependency graph",

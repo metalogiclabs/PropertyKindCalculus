@@ -40,6 +40,7 @@ public import PropertyKindCalculus.Tests.Core.CertifiedIngest
 public import PropertyKindCalculus.Tests.Core.BoundaryAudit
 public import PropertyKindCalculus.Tests.Core.Provenance
 public import PropertyKindCalculus.Tests.Core.Influence
+public import PropertyKindCalculus.Tests.Core.Seal
 public import PropertyKindCalculus.Tests.Core.Index
 public import PropertyKindCalculus.Tests.Core.Rubrics
 

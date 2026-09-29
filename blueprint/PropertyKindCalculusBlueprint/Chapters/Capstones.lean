@@ -3,12 +3,20 @@ import VersoManual
 import VersoBlueprint
 -- Importing the library being documented lets the `(lean := "PropertyKindCalculus.…")`
 -- nodes below resolve to real declarations and report their *proved* status. The graph
--- library carries the reachability reading of the pedigree closure that the first capstone
--- is argued over; the tape library carries the recording carrier and the denotation bridge
--- the second capstone rests on.
+-- library carries the reachability reading of the pedigree closure the first capstone is
+-- argued over and the two seal and bisimulation modules; the dimension library carries the
+-- third capstone; the tape library carries the recording carrier, the denotation bridge and
+-- the seal of the computation; the three test modules carry the witnesses.
 import PropertyKindCalculus
 import PropertyKindCalculus.Graph.Flow
+import PropertyKindCalculus.Graph.Seal
+import PropertyKindCalculus.Graph.Bisimulation
+import PropertyKindCalculus.DimensionalHomogeneity
 import PropertyKindCalculus.Torch.Paradigm.TapeParity
+import PropertyKindCalculus.Torch.Paradigm.TapeSeal
+import PropertyKindCalculus.Tests.Graph.Seal
+import PropertyKindCalculus.Tests.Graph.Bisimulation
+import PropertyKindCalculus.Tests.Dimension.Homogeneity
 
 open Verso.Genre
 open Verso.Genre.Manual
@@ -56,13 +64,12 @@ relates to the provenance hypergraph; it carries no kinds until the
 {tech}[blueprint dependency graph] drawn at the end of this document, which is a picture of
 the document itself.
 
-This chapter is written blueprint-first, in the discipline {ref "proved-spine"}[the proved
-spine] records after the fact: each theorem is stated informally with its hypotheses, its
-proof is sketched against the declarations that exist, and the code-level refactoring each
-sketch calls for is named as a work item in the ledger at the end. A node tagged _planned_
-carries a statement and a sketch and no `lean` link; it turns _proved_ when the declaration
-lands, and the status summary at the end of the blueprint counts both. Two rules govern
-every statement below. *Non-vacuity is a deliverable, not a hope*: each capstone owes three
+This chapter was written blueprint-first, in the discipline {ref "proved-spine"}[the proved
+spine] records after the fact: each theorem was stated informally with its hypotheses and
+its proof sketched against the declarations that existed, and the declarations were then
+written to the sketches. Every node now links the declaration that discharges it, and the
+ledger at the end records what the sketches priced and what remains an instrument rather
+than a theorem. Two rules govern every statement below. *Non-vacuity is a deliverable, not a hope*: each capstone owes three
 witnesses — an instance whose hypotheses the kernel decides, a mutant that fails the
 hypothesis _and_ the conclusion, so that the hypothesis is shown to carry the weight, and a
 pinned axiom profile. *The seal is no undeclared entry, not no entry*: raw data enters a
@@ -204,7 +211,7 @@ has either observed a fixpoint or would have outgrown its own bound — applied 
 reversed incidence, whose step relation is the converse of the flow digraph's adjacency.
 :::
 
-:::theorem "cap_thm_seal" (parent := "capstones_seal") (tags := "capstone, planned") (effort := "medium") (priority := "high")
+:::theorem "cap_thm_seal" (parent := "capstones_seal") (lean := "PropertyKindCalculus.Provenance.pedigree_seal") (tags := "capstone, proved") (effort := "medium") (priority := "high")
 *The {deftech}[seal of a module]{index}[seal of a module].* Let `g` be a provenance
 hypergraph and `c` a declared boundary, with `g` {uses "cap_def_wellFormed"}[well-formed]
 and `c` agreeing with `g` — the two judgments `#kind_assembly_decide` and
@@ -228,28 +235,35 @@ closure `known`, so some occurrence produces `a` with every operand in `known`; 
 operand is an ancestor of `a`, hence of `y` by transitivity of reachability. The hypothesis
 on `c` enters only to identify the non-produced ports of `g` with the boundary's declared
 inputs, configuration and parameters, so that the conclusion speaks of the declared
-interface rather than of whatever the harvest happened to port. The executable form — a
-decidable `undeclaredLeaves g y`, empty exactly under the conclusion — is the same induction
-stated as a `Bool`, and it is what an instance pins with `decide`. The theorem belongs
-beside the reachability reading, in the graph library.
+interface rather than of whatever the harvest happened to port. The case `a = y` and the
+step from a known node to a source or an occurrence result are the induction principle of
+the conjunctive closure (`reachableFrom_sound`, in the core), which the dimension capstone
+reuses. The executable form — a decidable `undeclaredLeaves g y`, empty exactly under the
+conclusion — is `sealed_of_wellFormed`, what an instance pins with `decide`; the boundary
+reading, `seal_of_agrees`, adds the hypothesis on `c`. All three stand beside the
+reachability reading, in the graph library.
 :::
 
-:::theorem "cap_thm_seal_witnesses" (parent := "capstones_seal") (tags := "planned") (effort := "small")
-*Non-vacuity of the seal.* Three witnesses, each a pinned probe. (i) An instance: a declared
-boundary of the worked model whose well-formedness and agreement the kernel already decides,
-for which `decide` closes the executable conclusion at every produced port. (ii) A mutant:
-the same hypergraph with one anonymous mint added — a `derived` introduction no occurrence
-produces, wired into an output — fails `wellFormed` _and_ has a non-empty
-`undeclaredLeaves` at that output, so the hypothesis is the discriminating one and the
-conclusion is not closed by the shape of the statement. (iii) The axiom profile of
+:::theorem "cap_thm_seal_witnesses" (parent := "capstones_seal") (lean := "PropertyKindCalculus.Tests.GraphSeal.seal_witnesses") (tags := "proved") (effort := "small")
+*Non-vacuity of the seal.* Three witnesses, each a pinned probe. (i) Two instances: an
+authored hypergraph — the influence probe, labelled by numbers so the kernel decides it —
+whose well-formedness and seal `decide` closes, with the theorem applied to it; and a
+harvested one, the interval composition's declared boundary, whose well-formedness and
+agreement the kernel already decides, for which `#kind_seal_decide` adds the seal theorem by
+kernel reduction of the executable conclusion at every output. (ii) A mutant: the same
+hypergraph with one anonymous mint added — a `derived` introduction no occurrence produces,
+wired into an output — fails `wellFormed` _and_ has a non-empty `undeclaredLeaves` at that
+output, exactly the mint, so the hypothesis is the discriminating one and the conclusion is
+not closed by the shape of the statement. (iii) The axiom profile of
 {uses "cap_thm_seal"}[the seal], pinned to the three classical axioms.
 :::
 
 :::proof "cap_thm_seal_witnesses"
-(i) and (ii) are `#guard` and `decide` probes over harvested and authored hypergraphs;
-(iii) is `#print axioms` under `#guard_msgs`. The mutant is the check the methodology asks
-of every gate — a tactic that closes a goal is not evidence that the hypothesis fired —
-carried into the capstone itself.
+(i) and (ii) are `decide` theorems over the authored hypergraph and its mutant, conjoined
+as the linked declaration, and a kernel-decided seal over the harvested one; (iii) is
+`#print axioms` under `#guard_msgs`. The mutant is the check the methodology asks of every
+gate — a tactic that closes a goal is not evidence that the hypothesis fired — carried into
+the capstone itself.
 :::
 
 What the first capstone does not claim: it is a theorem about the provenance hypergraph the
@@ -326,7 +340,7 @@ forward-value faithfulness lemmas through a run bridge, and a composite kernel's
 chain of them.
 :::
 
-:::theorem "cap_lem_tape_cone" (parent := "capstones_semantic") (tags := "planned") (effort := "small")
+:::theorem "cap_lem_tape_cone" (parent := "capstones_semantic") (lean := "PropertyKindCalculus.Paradigm.TapeSeal.evalTape_cone") (tags := "proved") (effort := "small")
 *Evaluation reads only the cone.* Re-evaluating a tape from an environment of leaf values
 gives, at every node, a value that depends only on the leaves in that node's backward cone
 in the tape graph: two environments agreeing on the cone's named leaves give the same value
@@ -335,12 +349,13 @@ tape-side counterpart of {uses "cap_lem_pedigree_reachable"}[the pedigree readin
 :::
 
 :::proof "cap_lem_tape_cone"
-Structural induction over the topologically ordered node list the evaluator walks: a leaf
-reads its own name or constant, and an operation applies its scalar to values already
-established for its parents, each of which lies in the cone.
+Strong induction over the vertex id, through the node-value characterisation of the
+evaluator's fold (`evalTape_node_value`): a leaf reads its own name or constant, and an
+operation applies its scalar to values already established for its parents, each earlier
+in the tape and each in the cone.
 :::
 
-:::definition "cap_def_bisimulation" (parent := "capstones_semantic")
+:::definition "cap_def_bisimulation" (parent := "capstones_semantic") (lean := "PropertyKindCalculus.Paradigm.Match.weak")
 *The {deftech}[kind-transporting weak bisimulation]{index}[kind-transporting weak bisimulation].*
 The relation that ties the two graphs of one module together: the provenance hypergraph
 `g`, harvested from the source, where every kind originates, and the computational tape
@@ -365,118 +380,163 @@ occurrence lists, is what makes the match robust to sharing. `R` is not a biject
 four reasons present in the code: compaction merges tape nodes many-to-one; one kinded
 operation is several carrier operations; two uses of one witness are two occurrences by
 design; and a nominal selection is resolved at recording time into one tape per branch.
+
+The relation is a weak bisimulation in the textbook sense — Sangiorgi's, through cslib's
+labelled transition systems — between two systems over one label alphabet: a visible step
+is an edge family with the operand position it enters at, and the silent step is the wiring
+the harvest records as `copy`, a procedure edge, and every carrier-level interior step. The
+provenance layer's transitions are the hops of its occurrences; the tape graph's are its
+edges, labelled through the match. As data the relation is a *match*: a component table —
+each node of `g` with the tape vertices realizing it, one for a real carrier, two for a
+complex one — and one realization per occurrence, the interior vertices of its sub-graph.
+The observable relation is node to component; the interior of a realization is related to
+the occurrence's result, the result under construction. Acceptance is a decidable judgment
+on the match, each clause of which some proof below consumes.
 :::
 
 :::proof "cap_def_bisimulation"
-Computed, never assumed: a bottom-up matcher from the leaves, deciding per occurrence
-whether the realization table admits the tape sub-graph it finds, and refusing otherwise.
-The definition names the refactoring this capstone prices: the recorder must name its
-constant leaves, and either mark the scope of each member call on the tape or the matcher
-must widen the member set to the closure the tape sees through.
+Decided, never assumed: acceptance is a Boolean over the match, decided by evaluation in a
+probe and by kernel reduction in a theorem. A matcher that _finds_ the match from the
+leaves of a recorded tape — ports by name, constants by recording site, each occurrence by
+a realization table per family and carrier — is the instrument the ledger prices, and the
+refactoring it needs stands: the recorder must name its constant leaves, and either mark
+the scope of each member call on the tape or the matcher must widen the member set to the
+closure the tape sees through.
 :::
 
-:::theorem "cap_thm_bisimulation_sound" (parent := "capstones_semantic") (tags := "planned") (effort := "medium")
-*The matcher is sound.* When the matcher accepts `R` for `g` and `T`, the tape-to-hypergraph
-direction of {uses "cap_def_bisimulation"}[the bisimulation] holds: every path of the tape
-graph from a named leaf to a root projects along `R` to a path of `g` from the
-corresponding source to the corresponding produced port, and the kinds transported along
-`R` change only across the image of a licensed `step`. The other direction — every
-occurrence of `g` realized on the tape — is what acceptance checks occurrence by occurrence,
-so it holds by construction of the matcher; the direction stated here is the one the seal
-consumes and the one that needs a proof. The tape-side analogue of the lemma that makes the
-influence probe's `false` a theorem — so an accepted match is evidence rather than a report.
+:::theorem "cap_thm_bisimulation_sound" (parent := "capstones_semantic") (lean := "PropertyKindCalculus.Paradigm.Match.isWeakBisimulation_weak") (tags := "proved") (effort := "medium")
+*The accepted match is a weak bisimulation.* When acceptance holds for `R` between a
+well-formed `g` and `T`, {uses "cap_def_bisimulation"}[the bisimulation] is a weak
+bisimulation, in both directions: every hop of `g` from a node is matched, from each of the
+node's components, by a tape step with the same label up to silent steps, and every tape
+step from a vertex is matched from every node the vertex is related to. The direction the
+seal consumes follows as a corollary: every path of the tape graph from a component of a
+node `s` to a component of a node `b` projects along `R` to a path of the value-flow
+digraph from `s` to `b` (`reachable_of_tape_path_comps`); and every tape edge between two
+observable vertices realizes one hop of one occurrence of `g`, with the kinds that
+occurrence names for its operand and its result (`occurrence_of_edge`) — so the kinds
+transported along `R` change across a tape edge only where an occurrence of `g` states the
+change. The tape-side analogue of the lemma that makes the influence probe's `false` a
+theorem — so an accepted match is evidence rather than a report.
 :::
 
 :::proof "cap_thm_bisimulation_sound"
-Induction over the matcher's acceptance derivation, one case per family of the realization
-table; each case is a small path lemma about the sub-graph the entry admits.
+By factoring rather than by induction over an acceptance derivation: the strong
+bisimulation with the contracted tape graph composed with the contraction
+({uses "cap_thm_strong_bisimulation"}[the contraction lemma]), cslib's composition of weak
+bisimulations. The projection is the tape-to-hypergraph half of the saturated bisimulation,
+iterated along the path, with the observable vertices at both ends read back to their
+nodes through injectivity of the component table; the kind clause is covering and
+closedness of the sub-graphs read at one edge, with `occurrencesTyped` for the kinds.
 :::
 
-:::definition "cap_def_contraction" (parent := "capstones_semantic")
-*The {deftech}[contracted tape graph]{index}[contracted tape graph].* Let the matcher have
-accepted `R` for `g` and `T`, so that each occurrence `o` of `g` has a realizing sub-graph
-`S_o` of the tape graph. The contraction collapses each `S_o` to one ordered hyperedge:
-its operands are the frontier of `S_o` in the occurrence's operand order, its result is the
-root of `S_o`, and its label is the occurrence's family. It is defined — it yields an
-acyclic ordered hypergraph of the same signature as `g` — under four conditions on the
-sub-graphs, which the acceptance derivation records: _convex_, every tape path between two
-vertices of `S_o` stays inside `S_o`, so no contraction creates a cycle;
-_interior-private_, every edge leaving an interior vertex of `S_o` stays inside `S_o`, so
-no interior value is read from outside; _disjoint_, the interiors of distinct sub-graphs do
-not overlap; and _covering_, every operation vertex of the tape graph lies in some `S_o`.
-Leaves are matched by recording site, not by value, so that two constants of one value
-stay two leaves.
+:::definition "cap_def_contraction" (parent := "capstones_semantic") (lean := "PropertyKindCalculus.Paradigm.Match.contracted")
+*The {deftech}[contracted tape graph]{index}[contracted tape graph].* Let acceptance hold
+for `R` between `g` and `T`, so that each occurrence `o` of `g` has a realizing sub-graph
+`S_o` of the tape graph: its interior, its roots — the components of the result — and its
+frontier, the components of the operands in operand order. The contraction collapses each
+`S_o` to one ordered hyperedge from the frontier to the roots, labelled by the occurrence's
+family and the operand position; a wire is a silent step. It is defined — an ordered
+hypergraph of the same signature as `g`, with no interior — under the clauses acceptance
+decides of the sub-graphs: _closed_, every parent of a sub-graph vertex is an interior or a
+frontier vertex, so no value enters except through the operands; _interior-private_, every
+edge leaving an interior vertex stays inside `S_o`, so no interior value is read from
+outside; _progressing_, every interior vertex feeds the sub-graph, so it lies on a path to
+a root; _used_, every frontier vertex feeds the sub-graph; _disjoint_, the interiors of
+distinct sub-graphs do not overlap and no interior vertex is a component; and _covering_,
+every operation vertex of the tape graph lies in some `S_o`. Leaves are matched by
+recording site, not by value, so that two constants of one value stay two leaves.
 :::
 
 :::proof "cap_def_contraction"
-A quotient of the tape's vertex set by the interiors, with one hyperedge per accepted
-occurrence; the four conditions are decided over the acceptance derivation, and a
-sub-graph violating one is a match the matcher refuses. The recorder's obligation is the
-named constant leaf, the same one the bisimulation's definition already prices.
+One hyperedge per accepted occurrence, between components; the clauses are Boolean
+conjuncts of acceptance, and a sub-graph violating one is a match acceptance refuses. The
+recorder's obligation is the named constant leaf, the same one the bisimulation's
+definition already prices.
 :::
 
-:::theorem "cap_thm_strong_bisimulation" (parent := "capstones_semantic") (tags := "planned") (effort := "medium")
-*Contraction makes the bisimulation strong.* Under the four conditions of
-{uses "cap_def_contraction"}[the contraction], `R` restricted to the observable vertices is
-a strong bisimulation between `g` and the contracted tape graph — every step on one side
-is matched by exactly one step on the other, with no silent step — and, once the two
-node-identity mismatches are quotiented away, an isomorphism of ordered hypergraphs:
-compaction, by comparing against the uncompacted tape or by quotienting `g` by derivation
-equality; nominal selection, by comparing per branch. {uses "cap_def_bisimulation"}[The
-weak bisimulation] between `g` and the tape graph then factors as this strong one composed
-with the contraction, which is the standard relation between weak and strong bisimulation
-up to silent-step abstraction. What the strong form deliberately loses is the interior,
-and the interior is where the numerical side conditions live: the license clause and the
-adequacy layer keep working on the uncontracted tape graph.
+:::theorem "cap_thm_strong_bisimulation" (parent := "capstones_semantic") (lean := "PropertyKindCalculus.Paradigm.Match.isBisimulation_contracted") (tags := "proved") (effort := "medium")
+*Contraction makes the bisimulation strong.* Under acceptance and well-formedness, `R`
+restricted to the observable vertices — node to component — is a strong bisimulation
+between `g` and {uses "cap_def_contraction"}[the contracted tape graph]: every hop of `g`
+is matched by one hyperedge of the contraction and conversely, with no silent step, and
+once the two node-identity mismatches are quotiented away it is an isomorphism of ordered
+hypergraphs — compaction, by matching against a hypergraph quotiented by derivation
+equality; nominal selection, by matching per branch. The contraction itself — a component
+to every component of its node, a root to every interior vertex of its realization — is a
+weak bisimulation between the contracted and the actual tape graph
+(`isSWBisimulation_contraction`), and {uses "cap_def_bisimulation"}[the weak bisimulation]
+between `g` and the tape graph is their composite: the weak bisimulation factors as this
+strong one composed with the contraction, which is the standard relation between weak and
+strong bisimulation up to silent-step abstraction. What the strong form deliberately loses
+is the interior, and the interior is where the numerical side conditions live: the license
+clause and the adequacy layer keep working on the uncontracted tape graph.
 :::
 
 :::proof "cap_thm_strong_bisimulation"
-One contraction lemma: convexity and interior privacy give that every path of the
-contracted graph between observable vertices lifts to a path of the tape graph through
-interiors and projects, by {uses "cap_thm_bisimulation_sound"}[soundness of the matcher],
-to a path of `g`; coverage and disjointness give the converse, one hyperedge per
-occurrence. No new instrument: the acceptance derivation already decides the four
-conditions, so the strong form is a corollary of acceptance.
+The strong half is a corollary of acceptance alone — totality and injectivity of the
+component table, one realization per occurrence, and well-formedness for the result of
+every occurrence to be a declared node. The contraction's half is where the sub-graph
+clauses work: an interior vertex reaches a root through silent steps (progress, with the
+tape's order for termination), a frontier vertex enters the sub-graph (used), and a step
+from an interior vertex stays inside it (interior-private), while an interior vertex is
+related to nothing observable (disjointness). No new instrument: acceptance already
+decides every clause.
 :::
 
-:::theorem "cap_thm_semantic_seal" (parent := "capstones_semantic") (tags := "capstone, planned") (effort := "large") (priority := "high")
+:::theorem "cap_thm_semantic_seal" (parent := "capstones_semantic") (lean := "PropertyKindCalculus.Paradigm.TapeSeal.semantic_seal") (tags := "capstone, proved") (effort := "large") (priority := "high")
 *The {deftech}[seal of the computation]{index}[seal of the computation].* Let `f` be a
 module written once against the branchless carrier class with fixed-extent iteration, `g`
-its provenance hypergraph with `c` its declared boundary, and `T` the tape `f` records.
-Suppose (H1) {uses "cap_thm_seal"}[the seal of the module] holds of `g` and `c`; (H2) the
-matcher accepts a bisimulation `R` between `g` and the computational tape graph of `T`;
-and (H3) at every carrier, `f`
-{uses "cap_def_evaluates"}[evaluates] to the re-evaluation of `T` from its inputs. Then at
-every carrier and for every produced port `o`: two inputs that agree on the influencers of
-`o` — the sources `g` names for it — give the same value of `o`; every constant the
-computation uses is one the audit lists; and every kind change in the computation sits under
-a declared crossing. The hypergraph's absence claims become semantic: an input the harvest
-says cannot reach `o` provably does not, in the computation, at every carrier.
+its provenance hypergraph with `c` its declared boundary, and `T` the well-formed tape `f`
+records. Suppose (H1) `g` is well-formed, so that {uses "cap_thm_seal"}[the seal of the
+module] holds of it and, under agreement, of `c`; (H2) acceptance holds for a match `R`
+between `g` and the computational tape graph of `T`; and (H3) at a carrier, the value of
+`f` at an output `o` {uses "cap_def_evaluates"}[evaluates] to the re-evaluation of `T` at
+the vertex realizing `o`. Then for every node `o` — in particular every produced port —
+and every vertex `r` realizing it: two environments that agree on the leaves realizing the
+influencers of `o` — the sources `g` names for it — give the same value at `r`, hence the
+same value of `f` at that carrier (`semantic_seal_of_denotes`); every leaf in the cone of
+`r`, a named input or a baked constant, realizes an influencer of `o` — every constant the
+computation uses is one the assumption ledger lists; and every tape edge between observable
+vertices realizes one hop of one occurrence of `g`, with the kinds that occurrence names —
+every kind change in the computation sits under an occurrence the source states. The
+hypergraph's absence claims become semantic: an input the harvest says cannot reach `o`
+provably does not, in the computation, at every carrier the bridge reaches.
 :::
 
 :::proof "cap_thm_semantic_seal"
-By (H3) the value of `o` at any carrier is the tape's value at the root `R` assigns to `o`;
-by {uses "cap_lem_tape_cone"}[the cone lemma] that value depends only on the leaves in the
-root's cone; by {uses "cap_thm_bisimulation_sound"}[soundness of the matcher] those leaves
-are the images of the sources in the pedigree of `o`, which (H1) identifies with the
-declared influencers and the listed constants. The kind clause is the soundness theorem's
-second half, read back through `R`.
+By (H3) the value of `o` at the carrier is the tape's value at `r`; by
+{uses "cap_lem_tape_cone"}[the cone lemma] that value depends only on the named leaves in
+the cone of `r`; by {uses "cap_thm_bisimulation_sound"}[the accepted match] each such leaf
+is a component of a source whose tape path to `r` projects to a path of the value-flow
+digraph to `o`, so the source is an influencer of `o` — the assumption ledger (H1) prints.
+The kind clause is the accepted match's edge reading.
 :::
 
-:::theorem "cap_thm_semantic_seal_witnesses" (parent := "capstones_semantic") (tags := "planned") (effort := "medium")
-*Non-vacuity of the seal of the computation.* (i) An instance where all three hypotheses
-are discharged by theorem: the worked model's branchless dielectric chain and its
-reflectivity, whose hypergraph is pinned, whose tape is recorded, and whose (H3) is already
-a chain of `Evaluates` lemmas. (ii) A mutant: a recording that bakes one constant the audit
-does not list — the matcher refuses `R`, and the conclusion's constant clause fails.
-(iii) The axiom profile of {uses "cap_thm_semantic_seal"}[the seal of the computation],
-pinned.
+:::theorem "cap_thm_semantic_seal_witnesses" (parent := "capstones_semantic") (lean := "PropertyKindCalculus.Tests.Bisimulation.bisimulation_witnesses") (tags := "proved") (effort := "medium")
+*Non-vacuity of the seal of the computation.* (i) An instance in which acceptance is
+decided by the kernel and the recorded tape is the accepted graph: the module
+`y = a · b + e` at the complex carrier over the recording carrier, whose hypergraph has a
+product and a same-kind sum and whose tape expands the product to `(ac − bd) + (ad + bc)j`
+— four interior vertices the bisimulation is silent on. Acceptance is closed by `decide`;
+the strong bisimulation, the contraction, the weak bisimulation, the cone lemma and the seal
+of the computation are instantiated on it; and the tape the recorder writes, compacted,
+projects vertex for vertex onto that graph — a runtime check, since the tape's stored
+tensors are opaque to the kernel — with the recorded values checked against the seal's
+value clause. (ii) A mutant: a tape that bakes one constant the hypergraph does not list —
+acceptance refuses it, at the leaf clause the constant clause rests on. (iii) The axiom
+profiles of {uses "cap_thm_semantic_seal"}[the seal of the computation], the cone lemma and
+the bisimulation theorems, pinned. The worked model's branchless dielectric chain — whose
+hypergraph is pinned, whose tape is recorded and whose (H3) is a chain of `Evaluates`
+lemmas — is the instrument the ledger still prices: the match between its two objects is
+what the recorder decision fixes.
 :::
 
 :::proof "cap_thm_semantic_seal_witnesses"
-(i) is the matcher run on a pair of objects that already exist; (ii) is a probe; (iii) is
-`#print axioms`. Where (H3) is only a bit-exact runtime gate — the iterated retrieval, the
-table lookups — the instance is gated, not proved, and the ledger says so.
+(i) and (ii) are kernel-decided theorems over an authored pair, conjoined as the linked
+declaration, and a runtime check over the recorded tape; (iii) is `#print axioms`. Where
+(H3) is only a bit-exact runtime gate — the iterated retrieval, the table lookups — an
+instance is gated, not proved, and the ledger says so.
 :::
 
 What the second capstone changes, and what it leaves. It covers bits and, through `R`,
@@ -524,34 +584,42 @@ hypergraph: dimension is a homomorphism along every occurrence of a well-formed 
 hypergraph, not only along the edges an interaction algebra curates.
 :::
 
-:::theorem "cap_thm_dimensional_seal" (parent := "capstones_dimension") (tags := "capstone, planned") (effort := "medium") (priority := "high")
+:::theorem "cap_thm_dimensional_seal" (parent := "capstones_dimension") (lean := "PropertyKindCalculus.DimensionalHomogeneity.dimensional_homogeneity") (tags := "capstone, proved") (effort := "medium") (priority := "high")
 *{deftech}[Dimensional homogeneity]{index}[dimensional homogeneity] along the hypergraph.*
-Let `g` be a {uses "cap_def_wellFormed"}[well-formed] provenance hypergraph each of whose
-occurrences carries a family whose dimensional rule holds of its kinds' declared
-dimensions — a product adds the operand exponents, a quotient subtracts them, a reciprocal
-negates them, a power scales them by its exponent, a transcendental demands dimension one,
-a copy preserves — the verdict the coverage command reports as `[coherent]` for every
-non-parametric edge in scope. Then the dimension of every derived node equals the dimension
-the rules compute from its operands' dimensions, and hence from the sources' alone: the
-dimension functor is a homomorphism along every path of `g`. The hypergraph-level, total
-form of {uses "thm_dim_homomorphism"}[the curated homomorphism], which is per edge and per
-algebra.
+Let `g` be a {uses "cap_def_wellFormed"}[well-formed] provenance hypergraph and `dimOf` the
+declared dimension of each kind, such that the declared assignment of dimensions to nodes
+is homomorphic along every occurrence — the family's rule, applied to the operands'
+dimensions, gives the result's: a product adds the operand exponents, a quotient subtracts
+them, a reciprocal negates them, a power scales them by its exponent, a transcendental
+demands dimension one, a copy and a reference preserve, a same-kind sum demands equal
+operands — the verdict the coverage command reports as `[coherent]`, stated per occurrence
+and decided by the executable `coherent`. Then every assignment that follows the rules along
+every occurrence from the same source dimensions agrees with the declared one on every
+known node — every derived node, produced port and exit: the dimension of every output is
+the one the rules compute from the sources' alone, and the dimension functor is a
+homomorphism along every path of `g`. Stated over any rule algebra in the core
+(`Provenance.homogeneity`) and instantiated on PhysLib's dimensions with the coverage
+command's rules (`dimRule`); the hypergraph-level, total form of
+{uses "thm_dim_homomorphism"}[the curated homomorphism], which is per edge and per algebra.
 :::
 
 :::proof "cap_thm_dimensional_seal"
-Induction over the conjunctive closure from the sources, one case per family, each closed by
-the family's rule; well-formedness supplies that every derived node is produced by some
-occurrence with known operands. The refactoring this capstone prices is that the coverage
-rows must become data the hypergraph can carry — a dimension per kind reference, a verdict
-per occurrence — the way the boundary audit's tiers became `IntroTier` on the hypergraph;
-the command's report is today a rendered string. Non-vacuity: the pinned refutation of an
-`L · L → L` edge, and a mutant occurrence of that shape that fails the hypothesis and the
-conclusion together.
+Induction over the conjunctive closure from the sources (`reachableFrom_sound`, the same
+principle the seal of a module rests on), one case per occurrence, closed by the rule: two
+homomorphic assignments agreeing on the operands agree on the result. Well-formedness
+supplies that every derived node and every output is in the closure. The coverage rows as
+hypergraph data are the declared assignment `declaredDim dimOf g` and the per-occurrence
+verdict `coherent`, which `coherent_iff` identifies with the hypothesis. Non-vacuity: the
+refuted `L · L → L` edge as a mutant occurrence that fails the verdict and, together with
+it, the conclusion — the rule-following assignment gives the output `L²`, not the declared
+`L` (`homogeneity_witnesses`). What remains an instrument is reading `dimOf` off the
+environment's `DimensionedKind` registry for a harvested hypergraph, which the coverage
+command does by elaboration and the theorem takes as a hypothesis.
 :::
 
 # Status ledger
 
-*Done — what each capstone rests on, all of it proved or decided today.*
+*Done — what each capstone rests on, and the capstones themselves.*
 
 - The provenance hypergraph with its well-formedness judgment, the pedigree closure and its
   reachability reading, the boundary judgments `agrees` and `discharges`, and the
@@ -561,24 +629,35 @@ conclusion together.
   and the fit's forward, residual and Jacobian kernels.
 - The dimension functor, the curated homomorphism, and the coverage command with its pinned
   refutation of an incoherent edge.
+- The three capstones and their supporting lemmas, each linked above: the seal of a module
+  in the graph library, with its executable form, its boundary reading and the induction
+  principle of the conjunctive closure it and the third capstone share; the
+  kind-transporting weak bisimulation in cslib's labelled transition systems, factored as
+  the strong bisimulation with the contracted tape graph composed with the contraction; the
+  cone lemma and the seal of the computation on the tape evaluator; dimensional homogeneity
+  over any rule algebra, instantiated on PhysLib's dimensions. Each with its instance, its
+  mutant and its pinned axiom profile.
 
 *Open — each item with whose move it is.*
 
-- Capstone 1: state and prove the seal of a module (`cap_thm_seal`) beside the
-  reachability reading, with its executable form and its three witnesses. Nothing to
-  design; a proof-writing session. *Library.*
-- Capstone 2, instrument before theorem: run the matcher on the dielectric pair, where the
-  hypergraph, the tape and the parity theorem all exist, and read what disagrees before
-  pricing the seal of the computation (`cap_thm_semantic_seal`); the expected disagreement
-  classes are the four named in the bisimulation's definition (`cap_def_bisimulation`).
-  *Library and worked model.*
+- Capstone 2, the matcher: acceptance is decided on a match a probe authors. A matcher that
+  finds the match from the leaves of a recorded tape — ports by name, constants by recording
+  site, each occurrence by a realization table per family and carrier — is the instrument
+  to run on the dielectric pair, where the hypergraph, the tape and the parity theorem all
+  exist, reading what disagrees before the seal of the computation is claimed of the worked
+  model; the expected disagreement classes are the four named in the bisimulation's
+  definition (`cap_def_bisimulation`). *Library and worked model.*
 - Capstone 2, the recorder decision: scope markers per member call, or membership widened
-  to the closure the tape sees through — the choice that fixes the matcher's cost. *Owner.*
-- Capstone 2, the contraction lemma (`cap_thm_strong_bisimulation`): a corollary of
-  acceptance once the matcher exists, with no instrument of its own. *Library.*
+  to the closure the tape sees through — the choice that fixes the matcher's cost, and
+  what makes an assembly's procedure edges matchable beside the occurrences they summarize.
+  *Owner.*
 - Capstone 2, the iterated retrieval's parity theorem, today a bit-exact runtime gate.
   *Worked model.*
-- Capstone 3: the coverage rows as hypergraph data, then the induction. *Library.*
+- Capstone 3, the declared dimensions from the environment: the coverage command resolves
+  each kind to its `DimensionedKind` by elaboration; the assignment the capstone consumes is
+  authored per probe today, and the walk that reads it off the registry for a harvested
+  hypergraph is the bridge from the command's report to the theorem's hypothesis.
+  *Library.*
 
 # What the capstones do not claim
 

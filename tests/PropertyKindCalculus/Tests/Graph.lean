@@ -10,6 +10,8 @@ component computation on a hand-built graph, and the `#kind_scc` report and
 module
 
 public import PropertyKindCalculus.Tests.Graph.Bridge
+public import PropertyKindCalculus.Tests.Graph.Seal
+public import PropertyKindCalculus.Tests.Graph.Bisimulation
 
 @[expose] public section Blanket
 

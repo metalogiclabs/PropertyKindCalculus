@@ -180,6 +180,7 @@ public meta import PropertyKindCalculus.IndividualQuantity
 public import PropertyKindCalculus.BoundaryAudit
 public meta import PropertyKindCalculus.BoundaryAudit
 public import PropertyKindCalculus.Provenance
+public import PropertyKindCalculus.Influence
 public meta import PropertyKindCalculus.Provenance
 public import PropertyKindCalculus.AuditReceipt
 public meta import PropertyKindCalculus.AuditReceipt
@@ -2585,6 +2586,43 @@ named once. -/
 elab "#kind_assembly_decide " c:ident : command => liftTermElabM do
   let a ← assembleContract (← contractValueOf (← realizeGlobalConstNoOverload c))
   assemblyWfDecl a
+
+/-- The seal theorem of an assembly, however its scope was named: `d₁.kindSealed`, by
+kernel reduction of the executable seal (`Provenance.sealed`) on the assembled object —
+every output's pedigree has no leaf outside the declared sources. The instance of the
+first capstone theorem (`Graph.Seal.seal`), decided rather than derived, so that the
+conclusion is seen to hold on the object and not only to follow from the wiring theorem.
+Errors out — before troubling the kernel — when the assembly is not sealed. -/
+def assemblySealedDecl (a : Assembly) : Elab.TermElabM Unit := do
+  unless a.graph.sealed do
+    throwError "the kind assembly is not sealed — an output rests on a node that is \
+      neither a declared source nor the result of an occurrence; render it with \
+      #kind_assembly"
+  let prop ← Meta.mkAppM ``Provenance.Sealed #[toExpr a.graph]
+  let proof ← Meta.mkDecideProof prop
+  let name := a.levels[0]!.decl ++ `kindSealed
+  addDecl (.thmDecl { name, levelParams := [], type := prop, value := proof })
+  Lean.logInfo m!"kernel-accepted: every output of the kind assembly rests on declared \
+    sources only (theorem '{name}')"
+
+open Elab Command in
+/-- `#kind_seal_decide [d₁, d₂, …]` assembles the listed declarations, reflects the union
+graph into a term, and adds the theorem `d₁.kindSealed : (graph).Sealed`, proved by
+`decide` — kernel reduction of the executable seal: no output's pedigree has a leaf outside
+the declared sources. The seal follows from well-formedness (`Graph.Seal.seal`); this
+command pins the conclusion on the instance, so a mutant that fails well-formedness is seen
+to fail the conclusion too. -/
+elab "#kind_seal_decide " "[" ids:ident,* "]" : command => liftTermElabM do
+  let decls ← ids.getElems.mapM fun id => realizeGlobalConstNoOverload id
+  if decls.isEmpty then throwError "#kind_seal_decide expects at least one declaration"
+  let a ← assemble decls
+  assemblySealedDecl a
+
+open Elab Command in
+/-- `#kind_seal_decide c` proves the seal theorem over the scope a contract declares. -/
+elab "#kind_seal_decide " c:ident : command => liftTermElabM do
+  let a ← assembleContract (← contractValueOf (← realizeGlobalConstNoOverload c))
+  assemblySealedDecl a
 
 /-- The decider clause's checks (`Contract.deciders`): each entry names a `conditional`
 port of the contract, so a decider cannot be hung on an output that has no cases, and

@@ -15,7 +15,7 @@ AI ≈ `flops/((#inputs+#outputs)·4)` and grows with the fused program size. Bo
 not cited — by the AI-accounting section below (`aiReport`/`intensity`), so a demo reports the honest
 eager-vs-fused roofline gap rather than asserting it.
 
-FAITHFULNESS. `evalTape` gives the generated kernel's denotation as a Float interpreter with the
+FAITHFULNESS. `evalTape` (`paradigm.tape_eval`) gives the generated kernel's denotation as a Float interpreter with the
 SAME scalar op-semantics the emitted C uses (`+ − × ÷`, `fminf`/`fmaxf`, `expf`/`logf`/`sqrtf`).
 By tape forward-value faithfulness (`paradigm.tape_faithful`/`paradigm.tape_parity`) the recorded
 tape's stored values already equal the source kernel at `Float`, so `evalTape` re-evaluated at any
@@ -30,6 +30,7 @@ module
 
 public import PropertyKindCalculus.Torch.Paradigm.TapeCarrier
 public import PropertyKindCalculus.Torch.Paradigm.TapeCse
+public import PropertyKindCalculus.Torch.Paradigm.TapeEval
 public import PropertyKindCalculus.Torch.Paradigm.LutCarrier
 
 @[expose] public section Blanket
@@ -42,51 +43,12 @@ open PropertyKindCalculus.Paradigm.TapeCSE (cseCompact)
 
 namespace PropertyKindCalculus.Paradigm.TapeCodegen
 
-/-! ### Reading a tape node -/
+/-! ### The reference interpreter
 
-/-- The scalar constant a node stores as its forward value (a scalar tape node holds one `Float`;
-the same accessor `paradigm.tape_cse.nodeKey` uses). -/
-def nodeScalar (n : Node Float) : Float := (TorchLean.Storage.toArray n.value.tensor.buffer).toList.headD 0.0
-
-/-- A leaf has no parents; it is a graph **input** (a named leaf) or a **constant** (an unnamed
-`TapeBuilder.const` leaf). An op node has ≥1 parent and carries the op name. -/
-def isLeaf (n : Node Float) : Bool := n.parents.isEmpty
-
-/-! ### The generated-kernel semantics — a Float reference interpreter
-
-`evalTape env t` evaluates the recorded DAG at `Float` with the SAME scalar op-semantics the emitted
-CUDA/C kernel uses. Named leaves read from `env`; const leaves keep their stored value. This is the
-denotation the codegen must match, and at `Float` it equals the original `[NumCarrier α]` kernel by
-tape faithfulness (`paradigm.tape_parity`). It doubles as the CPU-side bit-exact validator (no CUDA
-toolchain needed) and the semantic anchor for the codegen-faithfulness proof. -/
-def cOp (nm : String) (args : List Float) : Except String Float :=
-  match nm, args with
-  | "add",  [a, b] => .ok (a + b)
-  | "sub",  [a, b] => .ok (a - b)
-  | "mul",  [a, b] => .ok (a * b)
-  | "div",  [a, b] => .ok (a / b)
-  | "min",  [a, b] => .ok (Min.min a b)   -- fminf
-  | "max",  [a, b] => .ok (Max.max a b)   -- fmaxf
-  | "exp",  [a]    => .ok (Float.exp a)   -- expf
-  | "log",  [a]    => .ok (Float.log a)   -- logf
-  | "sqrt", [a]    => .ok (Float.sqrt a)  -- sqrtf
-  | "abs",  [a]    => .ok (Float.abs a)   -- fabsf
-  | _, _ => .error s!"tape_codegen: unsupported op `{nm}` (arity {args.length})"
-
-def evalTape (env : String → Float) (t : Tape Float) : Except String (Array Float) := do
-  let mut vals : Array Float := Array.mkEmpty t.nodes.size
-  for n in t.nodes do
-    let v ← (
-      if n.parents.isEmpty then
-        match n.name with
-        | some nm => pure (env nm)
-        | none    => pure (nodeScalar n)
-      else
-        match n.name with
-        | some nm => cOp nm ((n.parents.map (fun p => vals.getD p 0.0)).toList)
-        | none    => .error "tape_codegen: op node with no op name")
-    vals := vals.push v
-  pure vals
+`nodeScalar`, `isLeaf`, `cOp` and `evalTape` — the Float reference interpreter with the SAME scalar
+op-semantics the emitted CUDA/C kernel uses — live in `paradigm.tape_eval`, together with the tape
+build invariant `WF`, the `foldlM` reformulation and the node-value characterisation the cone lemma
+rests on. They are re-exported through this module's namespace unchanged. -/
 
 /-! ### The table-extended interpreter
 
@@ -140,6 +102,7 @@ theorem evalTapeT_none (env : String → Float) (t : Tape Float) :
     evalTapeT (fun _ => none) env t = evalTape env t := by
   unfold evalTapeT evalTape
   simp only [cOpT_none]
+  rfl
 
 /-! ### C expression for one op node -/
 

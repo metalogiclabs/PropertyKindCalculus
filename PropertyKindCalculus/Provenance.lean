@@ -200,7 +200,7 @@ inductive Provenance.PortDir where
 deriving DecidableEq, Repr, Inhabited
 
 /-- Is this role a derivation target — an output, conditional or not? -/
-def Provenance.PortDir.produced : Provenance.PortDir → Bool
+@[expose] def Provenance.PortDir.produced : Provenance.PortDir → Bool
   | .output | .conditional => true
   | _ => false
 
@@ -219,7 +219,7 @@ never the tier that fills it, so binding time is a claim the contract makes and 
 the walk can read. Nothing else refines — a `config` is harvested from the declaration
 that binds it, so claiming one where the walk found none is a disagreement, not a
 refinement. -/
-def Provenance.PortDir.refines : Provenance.PortDir → Provenance.PortDir → Bool
+@[expose] def Provenance.PortDir.refines : Provenance.PortDir → Provenance.PortDir → Bool
   | .param, .input => true
   | a, b => a == b
 
@@ -237,10 +237,18 @@ inductive Provenance.IntroTier where
 deriving DecidableEq, Repr, Inhabited
 
 /-- Is this tier a source of the graph — a node known before any occurrence fires? -/
-def Provenance.IntroTier.isSource : Provenance.IntroTier → Bool
+@[expose] def Provenance.IntroTier.isSource : Provenance.IntroTier → Bool
   | .derived => false
   | .gated => true
   | .attested _ => true
+
+/-- Is this tier the interior one — a kind reached through an authored occurrence? A
+pattern match rather than `== .derived`, so the judgments reduce by `decide` from any
+importer: the derived equality on this type compares reason strings and reduces only where
+its private helper is visible. -/
+@[expose] def Provenance.IntroTier.isDerived : Provenance.IntroTier → Bool
+  | .derived => true
+  | _ => false
 
 /-- How an introduction tier prints in a rendered report: `derived` / `gated` /
 `attested "reason"` — the attested case shows its one-line justification, per the
@@ -294,7 +302,7 @@ deriving DecidableEq, Repr, Inhabited
 counted; a `power` edge's exponent is carried by the label, not an operand). A `step`
 edge's count is the step's kinded input count, carried by the label — a procedure
 relates however many inputs its interface states. -/
-def Provenance.EdgeFamily.operandCount : Provenance.EdgeFamily → Nat
+@[expose] def Provenance.EdgeFamily.operandCount : Provenance.EdgeFamily → Nat
   | .product | .quotient | .tableMul | .tableDiv | .additive => 2
   | .reciprocal | .transcendental | .power _ | .reference | .copy => 1
   | .step _ _ a => a
@@ -736,7 +744,7 @@ variable {ν κ : Type} [BEq ν] [BEq κ]
 
 /-- The kind a node is declared at — by a port, or else by an introduction event.
 `none` for an undeclared node. -/
-def kindOf? (g : Provenance ν κ) (n : ν) : Option κ :=
+@[expose] def kindOf? (g : Provenance ν κ) (n : ν) : Option κ :=
   match g.ports.find? (·.node == n) with
   | some p => some p.kind
   | none => (g.intros.find? (·.node == n)).map (·.kind)
@@ -744,13 +752,19 @@ def kindOf? (g : Provenance ν κ) (n : ν) : Option κ :=
 /-- The sources: the nodes known before any occurrence fires — every port the step does
 not produce (inputs, configuration reads, and the parameters a tier leaves unbound),
 gated ingests, and attested mints. -/
-def sources (g : Provenance ν κ) : List ν :=
+@[expose] def sources (g : Provenance ν κ) : List ν :=
   (g.ports.filter (fun p => !p.dir.produced)).map (·.node)
     ++ (g.intros.filter (·.tier.isSource)).map (·.node)
 
+/-- The outputs: the nodes the step produces or lets out — every produced port and every
+exit. The dual of `sources`, and the nodes the seal of a module is stated at
+(`Influence`, "The seal of a module — the executable form"). -/
+@[expose] def outputs (g : Provenance ν κ) : List ν :=
+  (g.ports.filter (·.dir.produced)).map (·.node) ++ g.exits
+
 /-- One monotone sweep of the closure: each occurrence whose operands are all known
 adds its result, in occurrence order. -/
-def sweep (occs : List (Occurrence ν κ)) (ks : List ν) : List ν :=
+@[expose] def sweep (occs : List (Occurrence ν κ)) (ks : List ν) : List ν :=
   occs.foldl (init := ks) fun ks o =>
     if o.operands.all (fun oc => ks.contains oc.1) && !ks.contains o.result then
       ks ++ [o.result]
@@ -762,7 +776,7 @@ function of `ks` alone — every later sweep would add nothing either. Running t
 regardless would cost one pass per occurrence where the graph's depth is what the closure
 actually needs, and this checker is reduced by the *kernel*: an assembly whose members
 carry several call sites multiplies its occurrences, and the sweep is the cubic term. -/
-def sweeps (occs : List (Occurrence ν κ)) : Nat → List ν → List ν
+@[expose] def sweeps (occs : List (Occurrence ν κ)) : Nat → List ν → List ν
   | 0, ks => ks
   | fuel + 1, ks =>
     let ks' := sweep occs ks
@@ -777,17 +791,17 @@ question is about rather than assumed of the whole graph. The conjunctive rule i
 is built from is — and it is deliberately *not* the influence relation a sensitivity query
 asks for: whether *some* operand carries a value onward is a disjunctive closure over the
 same incidence, a different query on the same data. -/
-def reachableFrom (g : Provenance ν κ) (start : List ν) : List ν :=
+@[expose] def reachableFrom (g : Provenance ν κ) (start : List ν) : List ν :=
   sweeps g.occurrences g.occurrences.length start
 
 /-- The nodes reached from the sources through the occurrences — `reachableFrom` at the
 start set `wellFormed`'s central condition asks about. -/
-def known (g : Provenance ν κ) : List ν := g.reachableFrom g.sources
+@[expose] def known (g : Provenance ν κ) : List ν := g.reachableFrom g.sources
 
 /-- Every node is declared exactly once, ports and introductions jointly: a node with
 two declarations would have two kinds or two tiers, and every lookup would silently
 choose one. -/
-def uniquelyDeclared (g : Provenance ν κ) : Bool :=
+@[expose] def uniquelyDeclared (g : Provenance ν κ) : Bool :=
   let ids := g.ports.map (·.node) ++ g.intros.map (·.node)
   ids.all fun n => (ids.filter (· == n)).length == 1
 
@@ -797,7 +811,7 @@ occurrence cannot re-kind a node, and cannot touch an undeclared one. A `copy` m
 additionally preserve the kind: the identity wire's claim is structural, so it is the
 one family whose equation well-formedness itself checks (header, "The identity
 wire"). -/
-def occurrencesTyped (g : Provenance ν κ) : Bool :=
+@[expose] def occurrencesTyped (g : Provenance ν κ) : Bool :=
   g.occurrences.all fun o =>
     o.operands.length == o.family.operandCount
       && o.operands.all (fun oc => g.kindOf? oc.1 == some oc.2)
@@ -807,9 +821,9 @@ def occurrencesTyped (g : Provenance ν κ) : Bool :=
 /-- Every occurrence's result is a derivation target: a `derived` introduction or an
 output port. Never a source — a gated or attested node's whole point is that its kind
 is *not* derived — and never an input or configuration port. -/
-def resultsAreDerivations (g : Provenance ν κ) : Bool :=
+@[expose] def resultsAreDerivations (g : Provenance ν κ) : Bool :=
   g.occurrences.all fun o =>
-    g.intros.any (fun i => i.node == o.result && i.tier == .derived)
+    g.intros.any (fun i => i.node == o.result && i.tier.isDerived)
       || g.ports.any (fun p => p.node == o.result && p.dir.produced)
 
 /-- The central condition — the boundary audit's "raw mints = 0", compositional: every
@@ -817,9 +831,9 @@ def resultsAreDerivations (g : Provenance ν κ) : Bool :=
 from the sources through the occurrence closure. A derived node no occurrence chain
 produces is an anonymous mint; an occurrence cycle feeding itself licenses nothing,
 because the closure starts from the sources. -/
-def sourcesReach (g : Provenance ν κ) : Bool :=
+@[expose] def sourcesReach (g : Provenance ν κ) : Bool :=
   let ks := g.known
-  g.intros.all (fun i => !(i.tier == .derived) || ks.contains i.node)
+  g.intros.all (fun i => !i.tier.isDerived || ks.contains i.node)
     && g.ports.all (fun p => !p.dir.produced || ks.contains p.node)
     && g.exits.all ks.contains
 
@@ -828,11 +842,11 @@ occurrences, results on derivation targets only, and sources reaching every deri
 node, output, and exit. Decided by evaluation in a probe and by kernel reduction in a
 proof; the truth of each edge remains the authored claim the trust model reviews by
 enumeration. -/
-def wellFormed (g : Provenance ν κ) : Bool :=
+@[expose] def wellFormed (g : Provenance ν κ) : Bool :=
   g.uniquelyDeclared && g.occurrencesTyped && g.resultsAreDerivations && g.sourcesReach
 
 /-- `Prop`-level well-formedness, for statements and `decide`. -/
-def WellFormed (g : Provenance ν κ) : Prop := g.wellFormed = true
+@[expose] def WellFormed (g : Provenance ν κ) : Prop := g.wellFormed = true
 
 instance (g : Provenance ν κ) : Decidable g.WellFormed :=
   inferInstanceAs (Decidable (g.wellFormed = true))
@@ -841,42 +855,42 @@ instance (g : Provenance ν κ) : Decidable g.WellFormed :=
 
 /-- Does a declared port stand for a computed one: the same node at the same kind, under
 a role that refines the computed role (`PortDir.refines` — only `param` for `input`). -/
-def Contract.standsFor (q p : Port ν κ) : Bool :=
+@[expose] def Contract.standsFor (q p : Port ν κ) : Bool :=
   q.node == p.node && q.kind == p.kind && q.dir.refines p.dir
 
 /-- The computed boundary ports the contract does not declare. This is where a widened
 scope surfaces: a member whose inputs nothing in the assembly feeds contributes ports
 nobody claimed, and a member whose kinds the wiring instantiates differently contributes
 a port at a kind nobody claimed. -/
-def Contract.undeclared (c : Contract ν κ) (g : Provenance ν κ) : List (Port ν κ) :=
+@[expose] def Contract.undeclared (c : Contract ν κ) (g : Provenance ν κ) : List (Port ν κ) :=
   g.ports.filter fun p => !(c.ports.any (Contract.standsFor · p))
 
 /-- The declared ports the computed boundary does not exhibit. This is where a narrowed
 scope surfaces: drop the member that fed an operand and the wire disappears with it, so
 the port the contract promised is no longer there to be found. -/
-def Contract.unrealized (c : Contract ν κ) (g : Provenance ν κ) : List (Port ν κ) :=
+@[expose] def Contract.unrealized (c : Contract ν κ) (g : Provenance ν κ) : List (Port ν κ) :=
   c.ports.filter fun q => !(g.ports.any fun p => Contract.standsFor q p)
 
 /-- The computed exits the contract does not declare — a value leaving the calculus where
 the boundary says none does. -/
-def Contract.undeclaredExits (c : Contract ν κ) (g : Provenance ν κ) : List ν :=
+@[expose] def Contract.undeclaredExits (c : Contract ν κ) (g : Provenance ν κ) : List ν :=
   g.exits.filter fun n => !(c.exits.contains n)
 
 /-- The declared exits the graph does not exhibit. -/
-def Contract.unrealizedExits (c : Contract ν κ) (g : Provenance ν κ) : List ν :=
+@[expose] def Contract.unrealizedExits (c : Contract ν κ) (g : Provenance ν κ) : List ν :=
   c.exits.filter fun n => !(g.exits.contains n)
 
 /-- The contract declares each node once — the hygiene `uniquelyDeclared` demands of the
 graph, asked of the claim, so two declarations cannot jointly cover one computed port
 while one of them stands for nothing. -/
-def Contract.declaresUniquely (c : Contract ν κ) : Bool :=
+@[expose] def Contract.declaresUniquely (c : Contract ν κ) : Bool :=
   let ids := c.ports.map (·.node)
   ids.all fun n => (ids.filter (· == n)).length == 1
 
 /-- The parameters the contract leaves unbound: the source ports whose values a tier
 below binds. Every one of them is an obligation on that tier, which either binds it to a
 configuration constant or restates it as a parameter of its own. -/
-def Contract.params (c : Contract ν κ) : List ν :=
+@[expose] def Contract.params (c : Contract ν κ) : List ν :=
   (c.ports.filter (·.dir == .param)).map (·.node)
 
 /-- **The declared boundary is the computed one**: every computed port declared, every
@@ -886,13 +900,13 @@ well-formedness does not claim"), decided by evaluation in a probe and by kernel
 reduction in a proof exactly as the wiring verdict is. It re-adjudicates no wiring: the
 two verdicts stand on one object, the first saying the graph holds together and this one
 saying it is the graph someone meant. -/
-def Contract.agrees (c : Contract ν κ) (g : Provenance ν κ) : Bool :=
+@[expose] def Contract.agrees (c : Contract ν κ) (g : Provenance ν κ) : Bool :=
   c.declaresUniquely
     && (c.undeclared g).isEmpty && (c.unrealized g).isEmpty
     && (c.undeclaredExits g).isEmpty && (c.unrealizedExits g).isEmpty
 
 /-- `Prop`-level agreement, for statements and `decide`. -/
-def Contract.Agrees (c : Contract ν κ) (g : Provenance ν κ) : Prop := c.agrees g = true
+@[expose] def Contract.Agrees (c : Contract ν κ) (g : Provenance ν κ) : Prop := c.agrees g = true
 
 instance (c : Contract ν κ) (g : Provenance ν κ) : Decidable (c.Agrees g) :=
   inferInstanceAs (Decidable (c.agrees g = true))

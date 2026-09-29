@@ -47,6 +47,8 @@ public import PropertyKindCalculus.QuantityVector
 public import PropertyKindCalculus.Frame
 public import PropertyKindCalculus.Provenance
 public import PropertyKindCalculus.Influence
+public import PropertyKindCalculus.Derivation
+public import PropertyKindCalculus.Paradigm.TapeGraph
 
 public section Interface
 
