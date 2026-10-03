@@ -21,6 +21,10 @@ jobs:
         run: |
           lake exe cache get
 
+      - name: Build qualification prerequisites
+        run: |
+          lake build PropertyKindCalculus.Tests.Torch.TapeSeal
+
       - name: Verify existing CSE qualification
         run: |
           bash experiments/mathgraph-cse-match-transport-v1/verify.sh
