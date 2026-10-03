@@ -13,8 +13,24 @@ lake env lean -o "$experiment_build/CseMatchTransport.olean" \
 lean_path="$(lake env printenv LEAN_PATH)"
 LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CseQuotientChecker.olean" \
   "$experiment_dir/CseQuotientChecker.lean"
-LEAN_PATH="$experiment_build:$lean_path" lean \
+LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/RecordedCseQualification.olean" \
   "$experiment_dir/RecordedCseQualification.lean"
+LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CertifiedCseGate.olean" \
+  "$experiment_dir/CertifiedCseGate.lean"
+LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CertifiedCseControls.olean" \
+  "$experiment_dir/CertifiedCseControls.lean"
+
+manifest="$(mktemp)"
+trap 'rm -f "$manifest"' EXIT
+LEAN_PATH="$experiment_build:$lean_path" lean --run \
+  "$experiment_dir/PkcCertify.lean" all > "$manifest"
+rg -q '^scenario: worked-model$' "$manifest"
+rg -q '^status: CERTIFIED$' "$manifest"
+rg -q '^raw_vertices: 18$' "$manifest"
+rg -q '^compacted_vertices: 14$' "$manifest"
+rg -q '^failed_clauses: \["component-ownership", "component-multiplicity"\]$' "$manifest"
+rg -q '^failed_clauses: \["source-match-acceptance", "leaves-are-sources"\]$' "$manifest"
+cmp "$manifest" "$experiment_dir/CERTIFICATION_MANIFEST.yml"
 
 lake build PropertyKindCalculus.Tests.Graph.Bisimulation
 
@@ -28,7 +44,10 @@ lake env lean \
 if rg -n '\b(sorry|admit|native_decide)\b' \
     experiments/mathgraph-cse-match-transport-v1/CseMatchTransport.lean \
     experiments/mathgraph-cse-match-transport-v1/CseQuotientChecker.lean \
-    experiments/mathgraph-cse-match-transport-v1/RecordedCseQualification.lean; then
+    experiments/mathgraph-cse-match-transport-v1/RecordedCseQualification.lean \
+    experiments/mathgraph-cse-match-transport-v1/CertifiedCseGate.lean \
+    experiments/mathgraph-cse-match-transport-v1/CertifiedCseControls.lean \
+    experiments/mathgraph-cse-match-transport-v1/PkcCertify.lean; then
   echo "forbidden proof placeholder or native_decide found" >&2
   exit 1
 fi

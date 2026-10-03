@@ -56,7 +56,9 @@ The follow-on modules close two further gaps:
   audit sound and complete for `TapeQuotientCertificate`; and
 - `RecordedCseQualification.lean` runs PKC's actual recorder and `cseCompact` on the complex
   worked model, pins the 18-to-14 vertex remap, and proves that the resulting audit yields
-  target acceptance plus both bisimulation capstones.
+  target acceptance plus both bisimulation capstones; and
+- `CertifiedCseGate.lean` and `CertifiedCseControls.lean` make that chain a proof-carrying
+  admission operation with complete named rejection residuals and executable adversarial controls.
 
 ## What has changed conceptually
 
@@ -113,10 +115,24 @@ executed Torch's external tensor primitives.
 `TapeQuotientAudit.complete` proves that the audit accepts every certificate. The audit can
 therefore be placed directly at the optimization/code-generation boundary.
 
-The remaining family-level generalization is narrower: prove that arbitrary `cseCompact` runs
-construct the audit evidence automatically, or wrap the current transform with the finite audit
-and refuse downstream code generation when it fails. The acceptance and bisimulation composition
-theorems themselves are closed.
+The remaining family-level generalization is narrower: prove conditions under which arbitrary
+`cseCompact` runs are guaranteed to pass the audit. The practical alternative is now implemented
+by `certifyCse`: it executes the actual transform and refuses admission unless the complete finite
+audit passes. This does not replace a universal proof of the imperative loop; it makes every
+concrete decision explicit and independently replayable.
+
+## One-command certification demonstrator
+
+```bash
+experiments/mathgraph-cse-match-transport-v1/pkc-certify all
+```
+
+The worked recording returns `CERTIFIED` with the exact 18-to-14 remap and theorem authority for
+accepted matching plus strong and weak bisimulation. Equal constants belonging to distinct
+attested sources return `REJECTED` with `component-ownership` and `component-multiplicity`. Adding
+one undeclared constant to the worked recording returns `REJECTED` with
+`source-match-acceptance` and `leaves-are-sources`.
+Every audit bit is printed, and the command appends a SHA-256 digest of its manifest.
 
 ## Actual recorded worked-model qualification
 
@@ -170,7 +186,9 @@ experiments/mathgraph-cse-match-transport-v1/verify.sh
 
 The proof sources are [`CseMatchTransport.lean`](./CseMatchTransport.lean),
 [`CseQuotientChecker.lean`](./CseQuotientChecker.lean), and
-[`RecordedCseQualification.lean`](./RecordedCseQualification.lean). The prior concrete CSE separator remains in
+[`RecordedCseQualification.lean`](./RecordedCseQualification.lean),
+[`CertifiedCseGate.lean`](./CertifiedCseGate.lean), and
+[`CertifiedCseControls.lean`](./CertifiedCseControls.lean). The prior concrete CSE separator remains in
 [`../mathgraph-cse-provenance-boundary-v1/`](../mathgraph-cse-provenance-boundary-v1/).
 
 ## Scope boundary
@@ -189,6 +207,10 @@ Established here:
 - a sound-and-complete executable audit for the quotient certificate;
 - a pinned execution of the actual recorder and `cseCompact` on PKC's worked model; and
 - accepted-match plus strong/weak-bisimulation consequences for that optimized concrete model.
+- a proof-carrying `certifyCse` result that unlocks those consequences on success;
+- a complete stable rejection vocabulary over source acceptance and all eleven quotient clauses;
+  and
+- a one-command worked-model and adversarial certification manifest.
 
 Not yet established:
 

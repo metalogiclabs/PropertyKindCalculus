@@ -41,7 +41,8 @@ runs:
 18-node raw recorded tape
   -> actual cseCompact remap
   -> 14-node compacted tape
-  -> provenance-sensitive Boolean audit passes
+  -> pkc-certify provenance-sensitive gate passes
+  -> proof-carrying CertifiedCse result
   -> transported Match.accepts
   -> strong bisimulation with the contracted optimized tape
   -> weak bisimulation with the optimized tape
@@ -54,6 +55,8 @@ PKC's independently authored compacted control match.
 This is a stronger result than the original review alone: it validates the abstract capstone,
 falsifies an unsafe optimization interpretation, supplies the minimum scientific-identity
 contract, makes that contract executable, and demonstrates it on PKC's real recorder/CSE path.
+The result is also exposed as a one-command certification demonstrator with complete named
+residuals and a SHA-256-addressed manifest.
 
 ## Manager-level conclusion
 
@@ -84,8 +87,9 @@ code below the tape has been verified.
 | A passing executable quotient audit yields that certificate | **WARRANTED (MathGraph)** | `CseQuotientChecker.TapeQuotientAudit.sound`; the checker is also complete for the certificate. |
 | The actual worked-model CSE remap is admissible | **WARRANTED, CONCRETE INSTANCE (MathGraph)** | Runtime `#guard`s pin the recorder/CSE output; `recorded_audit_passes` is a kernel theorem over the reified graph and remap. |
 | The optimized worked model retains strong and weak bisimulation | **WARRANTED, CONCRETE INSTANCE (MathGraph)** | `recorded_cse_strong_bisimulation` and `recorded_cse_weak_bisimulation`. |
+| The actual CSE run can be admitted or rejected as one proof-carrying operation | **WARRANTED, EXECUTABLE (MathGraph)** | `certifyCse` checks source acceptance and the quotient audit, then returns either `CertifiedCse`, whose proof field recovers source/target acceptance and both bisimulations, or `RejectedCse`, which retains every failed named clause. |
 | Every arbitrary recorded model is matched automatically | **OPEN** | PKC accepts a supplied match; generic inference still requires port names, recording-site identity, realization tables, and an owner decision on scope markers versus dependency closure. |
-| Every execution of `cseCompact` automatically produces the quotient certificate | **OPEN** | Requires a generic correctness bridge for the mutable array/hash-map loop or a proof-producing wrapper. |
+| Every execution of `cseCompact` is guaranteed to pass the quotient audit | **OPEN** | `certifyCse` now audits every concrete run and rejects unsafe ones; a universal success theorem would require a generic correctness bridge for the mutable array/hash-map loop and a provenance-aware optimizer contract. |
 | `cseCompact` preserves numerical denotation for every tape | **OPEN / OUTSIDE THIS QUALIFICATION** | The new checker establishes provenance admissibility of a target tape; functional correctness of the optimizer is a separate theorem. |
 | CUDA code generation, scheduler, checkpoint/resume, or generated machine code preserves tape denotation | **OPEN / OUTSIDE THIS REVIEW** | The bisimulation boundary begins at the accepted tape graph. |
 | Scientific attestations are physically true | **OUTSIDE THE FORMAL CLAIM** | Attestations are explicit hypotheses; comparison with nature belongs to scientific validation and uncertainty analysis. |
@@ -133,6 +137,38 @@ TapeQuotientCertificate -> audit passes
 A successful executable audit therefore becomes proof evidence for target acceptance and the
 existing PKC strong/weak bisimulation capstones.
 
+## Bonus: the proof-carrying `pkc-certify` gate
+
+The qualification is now operational rather than report-only. `CertifiedCseGate.lean` executes
+PKC's actual `cseCompact`, constructs the complete quotient audit, and returns one of two typed
+results:
+
+- `CertifiedCse`, containing the raw and compacted tapes, exact remap, and a proof that source
+  acceptance and the quotient audit passed; that proof is sufficient to derive transported
+  `Match.Accepts` and PKC's strong and weak
+  bisimulation theorems; or
+- `RejectedCse`, containing the compacted tape, exact remap, failed audit proof, and the complete
+  stable list of failed clauses.
+
+The command-line demonstrator runs the worked model and two attacks:
+
+```bash
+experiments/mathgraph-cse-match-transport-v1/pkc-certify all
+```
+
+Its current results are:
+
+| Scenario | CSE effect | Decision | Exact residual |
+|---|---:|---|---|
+| PKC worked model | 18 to 14 vertices | `CERTIFIED` | none; source acceptance and all eleven quotient clauses pass |
+| Equal constants from distinct sources | 2 to 1 vertex | `REJECTED` | `component-ownership`, `component-multiplicity` |
+| Worked model plus undeclared constant | 19 to 15 vertices | `REJECTED` | `source-match-acceptance`, `leaves-are-sources` |
+
+The command prints the pinned PKC revision, actual vertex counts, exact remap, each audit bit,
+the theorem authority available on success, and a SHA-256 digest of the emitted manifest. This is
+the compact NASA-facing demonstration: the same mechanism admits lawful optimization and rejects
+numerically innocent but scientifically unauthorized transformations.
+
 ## Worked-model evidence
 
 The qualified recorder instantiates PKC's complex model `y = a * b + e`, where complex
@@ -171,6 +207,8 @@ The package retains four independent controls:
 
 Together these demonstrate that admission is neither vacuous nor equivalent to disabling CSE.
 The protected distinction, not the numerical value, determines whether sharing is lawful.
+The first two adversarial cases are additionally run end-to-end through `pkc-certify`, so their
+named residuals are build-breaking controls rather than manually interpreted output.
 
 ## Value to Nicolas Rouquette
 
@@ -230,6 +268,7 @@ From the repository root:
 
 ```bash
 experiments/mathgraph-cse-match-transport-v1/verify.sh
+experiments/mathgraph-cse-match-transport-v1/pkc-certify all
 ```
 
 The script rebuilds the relevant PKC graph, CSE, code-generation, and test targets; replays the
@@ -247,15 +286,21 @@ placeholders in the generalized proof files.
 - Generic match transport: `CseMatchTransport.lean`
 - Executable quotient audit: `CseQuotientChecker.lean`
 - Actual recorder/CSE qualification: `RecordedCseQualification.lean`
+- Proof-carrying gate and named residuals: `CertifiedCseGate.lean`
+- Positive/adversarial gate controls: `CertifiedCseControls.lean`
+- One-command manifest: `pkc-certify` and `PkcCertify.lean`
+- Pinned output: `CERTIFICATION_MANIFEST.yml` (SHA-256
+  `e6dd03f822ce227f103594d59e66e6c0c85f180b914ef8db91ec37c6d0947148`)
 - Technical detail: `REPORT.md`
 - Integration summary: `HANDOFF.md`
 
 ## Highest-leverage remaining work
 
-The smallest next experiment is not another conceptual review. It is a proof-producing wrapper
-around `cseCompact` that emits the remap together with the finite quotient audit, then refuses code
-generation when the audit fails. That would operationalize the result for every recorded model
-without first requiring a universal proof of the imperative loop.
+The proof-producing wrapper around `cseCompact` is now implemented. The smallest next experiment
+is the repository's already-identified matcher: construct the source `Match` automatically from a
+harvested provenance graph and recorded tape, then pass it through this gate. A second independent
+track is a family-level denotation-preservation theorem for `cseCompact`; provenance admission and
+numeric correctness should remain separate certificates.
 
 In parallel, the generic matcher's policy dependency should be resolved explicitly: recorder scope
 markers or dependency-closure membership. Once that owner decision is made, the matcher and CSE

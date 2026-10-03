@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+experiment_dir="$repo_root/experiments/mathgraph-cse-match-transport-v1"
+experiment_build="$repo_root/.lake/build/mathgraph-experiments"
+scenario="${1:-worked-model}"
+manifest="$(mktemp)"
+trap 'rm -f "$manifest"' EXIT
+
+cd "$repo_root"
+mkdir -p "$experiment_build"
+
+lake build PropertyKindCalculus.Graph.Bisimulation \
+  PropertyKindCalculus.Torch.Paradigm.TapeCse \
+  PropertyKindCalculus.Torch.Paradigm.TapeCodegen >&2
+
+lean_path="$(lake env printenv LEAN_PATH)"
+LEAN_PATH="$experiment_build:$lean_path" lake env lean \
+  -o "$experiment_build/CseMatchTransport.olean" \
+  "$experiment_dir/CseMatchTransport.lean" >&2
+LEAN_PATH="$experiment_build:$lean_path" lake env lean \
+  -o "$experiment_build/CseQuotientChecker.olean" \
+  "$experiment_dir/CseQuotientChecker.lean" >&2
+LEAN_PATH="$experiment_build:$lean_path" lake env lean \
+  -o "$experiment_build/RecordedCseQualification.olean" \
+  "$experiment_dir/RecordedCseQualification.lean" >&2
+LEAN_PATH="$experiment_build:$lean_path" lake env lean \
+  -o "$experiment_build/CertifiedCseGate.olean" \
+  "$experiment_dir/CertifiedCseGate.lean" >&2
+LEAN_PATH="$experiment_build:$lean_path" lake env lean \
+  -o "$experiment_build/CertifiedCseControls.olean" \
+  "$experiment_dir/CertifiedCseControls.lean" >&2
+LEAN_PATH="$experiment_build:$lean_path" lake env lean --run \
+  "$experiment_dir/PkcCertify.lean" "$scenario" > "$manifest"
+
+cat "$manifest"
+printf 'manifest_sha256: %s\n' "$(sha256sum "$manifest" | cut -d' ' -f1)"

@@ -1,0 +1,85 @@
+mathgraph_pkc_certification: 1
+pkc_revision: 6d3da52c1db4a085ac7ea561dd8f125e7cdb0fc9
+scenario: worked-model
+optimizer: PropertyKindCalculus.Paradigm.TapeCSE.cseCompact
+match_source: supplied
+status: CERTIFIED
+source_match_accepted: true
+raw_vertices: 18
+compacted_vertices: 14
+remap: [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 4, 9, 3, 1, 10, 11, 12, 13]
+failed_clauses: []
+audit:
+  component_ownership: true
+  interior_ownership: true
+  role_separation: true
+  target_ordered: true
+  target_total: true
+  component_multiplicity: true
+  leaves_are_sources: true
+  sources_are_leaves: true
+  realized_topology: true
+  interior_multiplicity: true
+  coverage: true
+authority:
+  source_acceptance: CertifiedCse.sourceAccepted
+  source_acceptance_axioms: [propext, Classical.choice, Quot.sound]
+  acceptance: CertifiedCse.accepted
+  acceptance_axioms: [propext, Classical.choice, Quot.sound]
+  strong_bisimulation: CertifiedCse.strongBisimulation
+  strong_bisimulation_axioms: [propext, Classical.choice, Quot.sound]
+  weak_bisimulation: CertifiedCse.weakBisimulation
+  weak_bisimulation_axioms: [propext, Classical.choice, Quot.sound]
+boundary: the gate checks a supplied match; this is not automatic matching or universal optimizer correctness
+---
+mathgraph_pkc_certification: 1
+pkc_revision: 6d3da52c1db4a085ac7ea561dd8f125e7cdb0fc9
+scenario: distinct-source-mutant
+optimizer: PropertyKindCalculus.Paradigm.TapeCSE.cseCompact
+match_source: supplied
+status: REJECTED
+source_match_accepted: true
+raw_vertices: 2
+compacted_vertices: 1
+remap: [0, 0]
+failed_clauses: ["component-ownership", "component-multiplicity"]
+audit:
+  component_ownership: false
+  interior_ownership: true
+  role_separation: true
+  target_ordered: true
+  target_total: true
+  component_multiplicity: false
+  leaves_are_sources: true
+  sources_are_leaves: true
+  realized_topology: true
+  interior_multiplicity: true
+  coverage: true
+authority: none (quotient not admitted)
+boundary: rejection is a certified residual of the supplied provenance correspondence
+---
+mathgraph_pkc_certification: 1
+pkc_revision: 6d3da52c1db4a085ac7ea561dd8f125e7cdb0fc9
+scenario: undeclared-constant-mutant
+optimizer: PropertyKindCalculus.Paradigm.TapeCSE.cseCompact
+match_source: supplied
+status: REJECTED
+source_match_accepted: false
+raw_vertices: 19
+compacted_vertices: 15
+remap: [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 4, 9, 3, 1, 10, 11, 12, 13, 14]
+failed_clauses: ["source-match-acceptance", "leaves-are-sources"]
+audit:
+  component_ownership: true
+  interior_ownership: true
+  role_separation: true
+  target_ordered: true
+  target_total: true
+  component_multiplicity: true
+  leaves_are_sources: false
+  sources_are_leaves: true
+  realized_topology: true
+  interior_multiplicity: true
+  coverage: true
+authority: none (quotient not admitted)
+boundary: rejection is a certified residual of the supplied provenance correspondence
