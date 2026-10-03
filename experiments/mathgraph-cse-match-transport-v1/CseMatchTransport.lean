@@ -141,6 +141,190 @@ theorem equal_constants_do_not_respect_distinct_sources :
   have : (0 : Nat) = 1 := h.components h0 h1 rfl
   omega
 
+/-! ## Full acceptance transport -/
+
+/-- The evidence a tape quotient must carry in addition to source acceptance.  The identity
+field records why the quotient is scientifically admissible; the remaining fields are the
+target-side executable obligations that are not invariant under merely mapping vertex ids.
+
+This is deliberately not an `Accepts` field.  The occurrence/key clauses are transported from
+the source match below, so the certificate contains only the residual introduced by quotienting. -/
+structure TapeQuotientCertificate [BEq ν] [BEq κ]
+    (g : Provenance ν κ) (T' : TapeGraph) (m : Match ν) (q : Nat → Nat) : Prop where
+  identity : CseRespectsMatch m q
+  ordered : T'.ordered = true
+  total : Match.totalOnNodes g T' (transportMatch q m) = true
+  componentMultiplicity : Match.componentsDisjoint (transportMatch q m) = true
+  leafSources : Match.leavesAreSources g T' (transportMatch q m) = true
+  sourceLeaves : Match.sourcesAreLeaves g T' (transportMatch q m) = true
+  realizedTopology :
+    (transportMatch q m).realized.all (Match.realizedOk g T' (transportMatch q m)) = true
+  interiorMultiplicity : Match.interiorsDisjoint (transportMatch q m) = true
+  coverage : Match.covering g T' (transportMatch q m) = true
+
+lemma uniqueKeys_transport [BEq ν] (q : Nat → Nat) (m : Match ν) :
+    Match.uniqueKeys (transportMatch q m) = Match.uniqueKeys m := by
+  simp [Match.uniqueKeys, transportMatch, Function.comp_def]
+
+lemma keysDeclared_transport [BEq ν] [BEq κ] (g : Provenance ν κ)
+    (q : Nat → Nat) (m : Match ν) :
+    Match.keysDeclared g (transportMatch q m) = Match.keysDeclared g m := by
+  simp [Match.keysDeclared, transportMatch, Function.comp_def]
+
+lemma realizesAll_transport [BEq ν] [BEq κ] (g : Provenance ν κ)
+    (q : Nat → Nat) (m : Match ν) :
+    Match.realizesAll g (transportMatch q m) = Match.realizesAll g m := by
+  simp [Match.realizesAll, transportMatch, Function.comp_def]
+
+lemma realizedInGraph_transport [BEq ν] [BEq κ] (g : Provenance ν κ)
+    (q : Nat → Nat) (m : Match ν) :
+    Match.realizedInGraph g (transportMatch q m) = Match.realizedInGraph g m := by
+  simp [Match.realizedInGraph, transportMatch, Function.comp_def]
+
+/-- **Acceptance transport.** An accepted authored match remains accepted after a tape quotient
+whenever the quotient carries the residual certificate above. -/
+theorem transport_accepts [BEq ν] [BEq κ] {g : Provenance ν κ} {T T' : TapeGraph}
+    {m : Match ν} {q : Nat → Nat} (old : m.Accepts g T)
+    (cert : TapeQuotientCertificate g T' m q) :
+    (transportMatch q m).Accepts g T' := by
+  have h := Match.Acc.of_accepts old
+  unfold Match.Accepts Match.accepts
+  rw [cert.ordered, cert.total, uniqueKeys_transport q m, h.uniq,
+    keysDeclared_transport g q m, h.keys, cert.componentMultiplicity,
+    cert.leafSources, cert.sourceLeaves, cert.realizedTopology,
+    cert.interiorMultiplicity, cert.coverage,
+    realizesAll_transport g q m, h.all,
+    realizedInGraph_transport g q m, h.inG]
+  decide
+
+/-- The protected partition promised by a quotient certificate. -/
+theorem TapeQuotientCertificate.protectedPartition [BEq ν] [BEq κ]
+    {g : Provenance ν κ} {T' : TapeGraph} {m : Match ν} {q : Nat → Nat}
+    (cert : TapeQuotientCertificate g T' m q) :
+    (∀ ⦃a b z⦄, z ∈ (transportMatch q m).comps a →
+      z ∈ (transportMatch q m).comps b → a = b) ∧
+    (∀ ⦃r s z⦄, r ∈ (transportMatch q m).realized →
+      s ∈ (transportMatch q m).realized → z ∈ r.interior → z ∈ s.interior → r = s) ∧
+    (∀ ⦃r z a⦄, r ∈ (transportMatch q m).realized →
+      z ∈ r.interior → z ∈ (transportMatch q m).comps a → False) :=
+  transport_preserves_protected_partition q m cert.identity
+
+/-- Once acceptance transports, PKC's existing contraction theorem supplies the strong
+bisimulation between the authored provenance graph and the contracted compacted tape. -/
+theorem transport_strong_bisimulation [BEq ν] [LawfulBEq ν] [BEq κ]
+    {g : Provenance ν κ} (hwf : g.WellFormed) {T T' : TapeGraph}
+    {m : Match ν} {q : Nat → Nat} (old : m.Accepts g T)
+    (cert : TapeQuotientCertificate g T' m q) :
+    Cslib.LTS.IsBisimulation g.lts ((transportMatch q m).contracted g)
+      (Match.obs (transportMatch q m)) :=
+  Match.isBisimulation_contracted hwf
+    (Match.Acc.of_accepts (transport_accepts old cert))
+
+/-- The same certificate also recovers PKC's kind-transporting weak bisimulation against the
+uncontracted compacted tape graph. -/
+theorem transport_weak_bisimulation [BEq ν] [LawfulBEq ν] [BEq κ]
+    {g : Provenance ν κ} (hwf : g.WellFormed) {T T' : TapeGraph}
+    {m : Match ν} {q : Nat → Nat} (old : m.Accepts g T)
+    (cert : TapeQuotientCertificate g T' m q) :
+    Cslib.LTS.IsWeakBisimulation g.lts
+      ((transportMatch q m).tapeLts g T') (Match.weak g (transportMatch q m)) :=
+  Match.isWeakBisimulation_weak hwf
+    (Match.Acc.of_accepts (transport_accepts old cert))
+
+/-! ## Lawful-sharing control -/
+
+/-- The remap observed in the executable equal-constant CSE control from the preceding
+`mathgraph-cse-provenance-boundary-v1` qualification. -/
+def repeatedSourceRemap : Nat → Nat
+  | 0 | 1 => 0
+  | n => n
+
+def repeatedSource : Provenance Nat Nat where
+  ports := []
+  intros := [⟨0, 10, .attested "one calibration source"⟩]
+  occurrences := []
+  exits := []
+
+/-- Both raw emissions belong to the same metrological source. -/
+def repeatedSourceMatch : Match Nat where
+  components := [(0, [0, 1])]
+  realized := []
+
+def repeatedSourceGraph : TapeGraph := ⟨[⟨none, []⟩, ⟨none, []⟩]⟩
+def repeatedSourceGraphCse : TapeGraph := ⟨[⟨none, []⟩]⟩
+
+lemma repeated_source_graph_size : repeatedSourceGraph.size = 2 := by decide
+lemma repeated_source_graph_cse_size : repeatedSourceGraphCse.size = 1 := by decide
+lemma repeated_source_remap_zero : repeatedSourceRemap 0 = 0 := by decide
+lemma repeated_source_remap_one : repeatedSourceRemap 1 = 0 := by decide
+
+lemma repeated_source_identity :
+    CseRespectsMatch repeatedSourceMatch repeatedSourceRemap := by
+  refine ⟨?_, ?_, ?_⟩
+  · intro a b u v hu hv _
+    have ha : a = 0 := by
+      by_contra hne
+      have hne' : 0 ≠ a := Ne.symm hne
+      have hempty : repeatedSourceMatch.comps a = [] := by
+        simp [repeatedSourceMatch, Match.comps, hne']
+      rw [hempty] at hu
+      simp at hu
+    have hb : b = 0 := by
+      by_contra hne
+      have hne' : 0 ≠ b := Ne.symm hne
+      have hempty : repeatedSourceMatch.comps b = [] := by
+        simp [repeatedSourceMatch, Match.comps, hne']
+      rw [hempty] at hv
+      simp at hv
+    omega
+  · intro r s u v hr
+    simp [repeatedSourceMatch] at hr
+  · intro r u a v hr
+    simp [repeatedSourceMatch] at hr
+
+/-- The graph quotient corresponding to the executable equal-constant control carries the
+complete certificate when both emissions are occurrences of one attested source. -/
+theorem repeatedSourceCertificate : TapeQuotientCertificate repeatedSource
+    repeatedSourceGraphCse repeatedSourceMatch repeatedSourceRemap where
+  identity := repeated_source_identity
+  ordered := by decide
+  total := by decide
+  componentMultiplicity := by decide
+  leafSources := by decide
+  sourceLeaves := by decide
+  realizedTopology := by decide
+  interiorMultiplicity := by decide
+  coverage := by decide
+
+lemma repeated_source_accepted :
+    repeatedSourceMatch.Accepts repeatedSource repeatedSourceGraph := by decide
+
+/-- The abstract quotient corresponding to the real `cseCompact` control transports the accepted
+match when both emissions belong to one attested source. -/
+theorem repeated_source_cse_accepts :
+    (transportMatch repeatedSourceRemap repeatedSourceMatch).Accepts
+      repeatedSource repeatedSourceGraphCse :=
+  transport_accepts repeated_source_accepted repeatedSourceCertificate
+
+lemma repeated_source_wellFormed : repeatedSource.WellFormed := by decide
+
+/-- Non-vacuous strong-bisimulation witness after lawful compaction. -/
+theorem repeated_source_strong_bisimulation :
+    Cslib.LTS.IsBisimulation repeatedSource.lts
+      ((transportMatch repeatedSourceRemap repeatedSourceMatch).contracted repeatedSource)
+      (Match.obs (transportMatch repeatedSourceRemap repeatedSourceMatch)) :=
+  transport_strong_bisimulation repeated_source_wellFormed
+    repeated_source_accepted repeatedSourceCertificate
+
+/-- Non-vacuous weak-bisimulation witness against the compacted tape graph. -/
+theorem repeated_source_weak_bisimulation :
+    Cslib.LTS.IsWeakBisimulation repeatedSource.lts
+      ((transportMatch repeatedSourceRemap repeatedSourceMatch).tapeLts
+        repeatedSource repeatedSourceGraphCse)
+      (Match.weak repeatedSource (transportMatch repeatedSourceRemap repeatedSourceMatch)) :=
+  transport_weak_bisimulation repeated_source_wellFormed
+    repeated_source_accepted repeatedSourceCertificate
+
 /-! ## Axiom profiles -/
 
 /-- info: 'PropertyKindCalculus.Experiments.CseMatchTransport.transport_preserves_protected_partition' depends on axioms: [propext,
@@ -150,6 +334,32 @@ theorem equal_constants_do_not_respect_distinct_sources :
 /-- info: 'PropertyKindCalculus.Experiments.CseMatchTransport.equal_constants_do_not_respect_distinct_sources' depends on axioms: [propext,
  Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms equal_constants_do_not_respect_distinct_sources
+
+/-- info: 'PropertyKindCalculus.Experiments.CseMatchTransport.transport_accepts' depends on axioms: [propext,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms transport_accepts
+
+/-- info: 'PropertyKindCalculus.Experiments.CseMatchTransport.transport_strong_bisimulation' depends on axioms: [propext,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms transport_strong_bisimulation
+
+/-- info: 'PropertyKindCalculus.Experiments.CseMatchTransport.transport_weak_bisimulation' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms transport_weak_bisimulation
+
+/-- info: 'PropertyKindCalculus.Experiments.CseMatchTransport.repeated_source_cse_accepts' depends on axioms: [propext,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms repeated_source_cse_accepts
+
+/-- info: 'PropertyKindCalculus.Experiments.CseMatchTransport.repeated_source_strong_bisimulation' depends on axioms: [propext,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms repeated_source_strong_bisimulation
+
+/-- info: 'PropertyKindCalculus.Experiments.CseMatchTransport.repeated_source_weak_bisimulation' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms repeated_source_weak_bisimulation
 
 end PropertyKindCalculus.Experiments.CseMatchTransport
 

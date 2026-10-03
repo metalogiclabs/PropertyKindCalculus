@@ -1,12 +1,14 @@
 # PKC CSE match-transport qualification
 
-Status: **constructive identity-transport theorem established; topology residual isolated**
+Status: **executable quotient admission and the actual recorded worked-model CSE path qualified**
 
 PKC baseline: `nasa-jpl/PropertyKindCalculus@6d3da52c1db4a085ac7ea561dd8f125e7cdb0fc9`
 
 Prepared independently by: **Heath Sanchez / Metalogic Labs (MathGraph.org)**
 
-Date: 2026-10-03
+Date: 2026-10-03--04
+
+Manager-facing synthesis: [`INDEPENDENT_REVIEW.md`](./INDEPENDENT_REVIEW.md)
 
 ## Executive result
 
@@ -24,15 +26,37 @@ positive contract.
   components from silent interiors; and
 - `transport_preserves_protected_partition`, a family-level Lean theorem proving that the
   transported match preserves all three protected ownership relations whenever the
-  certificate holds.
+  identity certificate holds;
+- `TapeQuotientCertificate`, the explicit optimization-admission evidence object for the
+  target tape graph; and
+- `transport_accepts`, which composes source acceptance with that certificate to prove
+  full target `Match.Accepts`.
+
+Two immediate corollaries close the abstract optimization consequence:
+
+- `transport_strong_bisimulation` reuses PKC's existing contraction theorem to establish
+  a strong bisimulation between the authored provenance graph and the contracted optimized
+  tape; and
+- `transport_weak_bisimulation` reuses PKC's existing theorem to establish the
+  kind-transporting weak bisimulation against the uncontracted optimized tape.
 
 The same file proves `equal_constants_do_not_respect_distinct_sources`: the remap that
 collapses the two source vertices in the original separator cannot satisfy
 `CseRespectsMatch`. This makes the failure criterion executable as a theorem premise rather
 than leaving it as prose.
 
-The result has no `sorry`, `admit`, or `native_decide`. Both headline theorems have axiom
-profile `[propext, Quot.sound]`.
+The result has no `sorry`, `admit`, or `native_decide`. `transport_accepts`, the strong
+bisimulation corollary, the lawful-sharing acceptance witness, and the two identity theorems
+have axiom profile `[propext, Quot.sound]`. The weak-bisimulation corollary inherits
+`Classical.choice` from PKC's existing weak-bisimulation theorem.
+
+The follow-on modules close two further gaps:
+
+- `CseQuotientChecker.lean` makes every certificate field executable and proves the Boolean
+  audit sound and complete for `TapeQuotientCertificate`; and
+- `RecordedCseQualification.lean` runs PKC's actual recorder and `cseCompact` on the complex
+  worked model, pins the 18-to-14 vertex remap, and proves that the resulting audit yields
+  target acceptance plus both bisimulation capstones.
 
 ## What has changed conceptually
 
@@ -53,43 +77,71 @@ The contract does not require CSE to be globally injective. It permits exactly t
 that does not collapse a distinction protected by the current match. That is the useful
 middle ground between disabling CSE and trusting equal raw values as semantic identity.
 
-## Exact residual to full `Match.Accepts` transport
+## The certificate boundary
 
-This qualification deliberately does **not** claim the complete theorem
+This qualification now proves the complete compositional theorem
 
 ```text
 m.Accepts g T
-  ∧ CseRespectsMatch m q
+  ∧ TapeQuotientCertificate g T' m q
   → (transportMatch q m).Accepts g T'
 ```
 
-because ownership is necessary but not sufficient. A complete theorem must additionally
-certify that the compacted graph `T'` is the graph quotient induced by `q`, including:
+The certificate includes `CseRespectsMatch` as the scientific-identity boundary and exposes
+the exact remaining target-side `Match.accepts` residuals separately:
 
-1. every mapped vertex is in range and every target vertex has a source preimage;
-2. mapped parent lists agree with target parent lists;
-3. leaf/operation status is preserved;
-4. each realization remains closed, private, progressing, and frontier-using;
-5. operation coverage survives; and
-6. list multiplicity does not create duplicate realization ownership after mapping.
+1. target ordering and totality;
+2. component disjointness after mapping;
+3. leaf/source correspondence in both directions;
+4. realization closure, privacy, progress, frontier use, and operation-only interiors;
+5. realization-interior disjointness; and
+6. operation coverage.
 
-These are topology and multiplicity obligations, not metrological identity obligations.
-Keeping them separate prevents a certificate named “respects match” from merely assuming
-the desired final acceptance judgment.
+The certificate does **not** contain an `Accepts` field. The source-stable key, declaration,
+occurrence-completeness, and occurrence-range clauses are transported by separate lemmas;
+the theorem reconstructs the target acceptance conjunction. This prevents the evidence
+object from merely renaming the desired conclusion.
 
-The next non-tautological theorem should therefore introduce a `TapeQuotientCertificate`
-for items 1–6 and prove:
+The lawful-sharing graph control proves that the collapse is admissible when both vertices
+belong to one attested source. Together with the preceding executable CSE qualification,
+which observes the same `0 ↦ 0, 1 ↦ 0` remap for two equal anonymous constants, this gives
+linked positive and negative controls for the boundary without claiming that kernel reduction
+executed Torch's external tensor primitives.
+
+`CseQuotientChecker.lean` turns all of these obligations into a finite Boolean audit. Its
+`TapeQuotientAudit.sound` theorem constructs the certificate from a passing audit, while
+`TapeQuotientAudit.complete` proves that the audit accepts every certificate. The audit can
+therefore be placed directly at the optimization/code-generation boundary.
+
+The remaining family-level generalization is narrower: prove that arbitrary `cseCompact` runs
+construct the audit evidence automatically, or wrap the current transform with the finite audit
+and refuse downstream code generation when it fails. The acceptance and bisimulation composition
+theorems themselves are closed.
+
+## Actual recorded worked-model qualification
+
+The qualification records PKC's existing complex model `y = a * b + e` through the real tape
+recorder. Before CSE the tape has 18 vertices. Running the actual `cseCompact` implementation
+produces the existing 14-vertex PKC control tape with remap:
 
 ```text
-transport_accepts
-  (old : m.Accepts g T)
-  (identity : CseRespectsMatch m q)
-  (topology : TapeQuotientCertificate T T' q m) :
-  (transportMatch q m).Accepts g T'
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 4, 9, 3, 1, 10, 11, 12, 13]
 ```
 
-PKC's existing `isWeakBisimulation_weak` and `isBisimulation_contracted` then apply without
-being weakened or reproved.
+The source match is accepted on the raw graph. Its transported form, after erasing only duplicate
+vertex identifiers introduced by sharing repeated emissions, equals PKC's independently authored
+compacted match. The complete quotient audit passes. Ordinary Lean theorems then establish:
+
+- `recorded_cse_accepts`;
+- `recorded_cse_strong_bisimulation`; and
+- `recorded_cse_weak_bisimulation`.
+
+The executable observation and mathematical proof are deliberately separated. `#guard` pins the
+concrete recorder, CSE result, graph projection, remap, and control-match correspondence. Kernel
+proofs establish audit soundness, acceptance transport, and bisimulation on those reified objects.
+This qualifies the concrete run; it is not a universal theorem about the imperative CSE loop.
+The audit qualifies provenance correspondence, not numerical equivalence of source and target
+tapes; a generic denotation-preservation theorem for `cseCompact` remains separate.
 
 ## Value to the PKC methodology
 
@@ -116,8 +168,9 @@ Run from the repository root:
 experiments/mathgraph-cse-match-transport-v1/verify.sh
 ```
 
-The proof source is [`CseMatchTransport.lean`](./CseMatchTransport.lean). The prior concrete
-CSE separator remains in
+The proof sources are [`CseMatchTransport.lean`](./CseMatchTransport.lean),
+[`CseQuotientChecker.lean`](./CseQuotientChecker.lean), and
+[`RecordedCseQualification.lean`](./RecordedCseQualification.lean). The prior concrete CSE separator remains in
 [`../mathgraph-cse-provenance-boundary-v1/`](../mathgraph-cse-provenance-boundary-v1/).
 
 ## Scope boundary
@@ -127,12 +180,24 @@ Established here:
 - a concrete transported-match construction for an arbitrary vertex remap;
 - a typed, non-numeric provenance identity contract;
 - family-level preservation of component, interior, and role ownership;
-- a proof that the existing equal-source-value separator violates that contract.
+- a proof that the existing equal-source-value separator violates that contract;
+- a non-tautological `TapeQuotientCertificate`;
+- full `Match.Accepts` transport;
+- strong bisimulation against the contracted optimized tape;
+- weak bisimulation against the uncontracted optimized tape; and
+- a lawful-sharing witness for two emissions of one attested source;
+- a sound-and-complete executable audit for the quotient certificate;
+- a pinned execution of the actual recorder and `cseCompact` on PKC's worked model; and
+- accepted-match plus strong/weak-bisimulation consequences for that optimized concrete model.
 
 Not yet established:
 
-- full Boolean `Match.Accepts` preservation;
-- a `TapeQuotientCertificate` derived from every run of `cseCompact`;
+- a `TapeQuotientCertificate` derived universally from every run of `cseCompact`;
+- numerical denotation preservation for every `cseCompact` run;
+- automatic inference of a `Match` for an arbitrary recorded computation;
+- graph isomorphism (strong bisimulation is established; isomorphism is a stronger and
+  separate claim);
 - an admitted provenance quotient for intentionally shared scientific derivations;
 - CUDA code-generation correctness below the tape;
+- scheduler and checkpoint/resume refinement below the tape; and
 - scientific validity against physical observations or truth of authored attestations.
