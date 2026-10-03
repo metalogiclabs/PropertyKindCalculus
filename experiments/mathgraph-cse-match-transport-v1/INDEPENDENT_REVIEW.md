@@ -58,7 +58,7 @@ contract, makes that contract executable, and demonstrates it on PKC's real reco
 The result is also exposed as a one-command certification demonstrator with complete named
 residuals and a SHA-256-addressed manifest.
 
-## Manager-level conclusion
+## Assurance conclusion
 
 The following statement is warranted:
 
@@ -137,7 +137,7 @@ TapeQuotientCertificate -> audit passes
 A successful executable audit therefore becomes proof evidence for target acceptance and the
 existing PKC strong/weak bisimulation capstones.
 
-## Bonus: the proof-carrying `pkc-certify` gate
+## Executable proof-carrying `pkc-certify` gate
 
 The qualification is now operational rather than report-only. `CertifiedCseGate.lean` executes
 PKC's actual `cseCompact`, constructs the complete quotient audit, and returns one of two typed
@@ -166,8 +166,8 @@ Its current results are:
 
 The command prints the pinned PKC revision, actual vertex counts, exact remap, each audit bit,
 the theorem authority available on success, and a SHA-256 digest of the emitted manifest. This is
-the compact NASA-facing demonstration: the same mechanism admits lawful optimization and rejects
-numerically innocent but scientifically unauthorized transformations.
+a compact, reproducible certification demonstration: the same mechanism admits lawful optimization
+and rejects numerically innocent but scientifically unauthorized transformations.
 
 ## Worked-model evidence
 
@@ -210,7 +210,7 @@ The protected distinction, not the numerical value, determines whether sharing i
 The first two adversarial cases are additionally run end-to-end through `pkc-certify`, so their
 named residuals are build-breaking controls rather than manually interpreted output.
 
-## Value to Nicolas Rouquette
+## Theoretical consequence and remaining proof obligation
 
 The review resolves the theoretical question at three levels:
 
@@ -225,7 +225,7 @@ The remaining universal theorem is sharply isolated: prove that a match-respecti
 `cseCompact` constructs the audit evidence automatically. That is a loop-invariant/code-refinement
 problem, not an unresolved question about the bisimulation capstone.
 
-## Value to Xiaolan Xu and the science methodology
+## Scientific assurance interpretation
 
 For a scientific deployment, the evidence can be organized as three separately reviewable claims:
 
@@ -236,10 +236,10 @@ For a scientific deployment, the evidence can be organized as three separately r
 3. **Admitted optimization:** every merge is checked against protected scientific identity and the
    optimized graph retains an accepted transported match.
 
-This provides a concrete answer to a manager asking why an optimized CPU/GPU graph still represents
-the scientist's authored algorithm. It is stronger than numerical regression testing because the
-evidence states which dependencies and kind transitions are authorized and rejects a numerically
-innocent transformation when it erases provenance.
+This provides a concrete answer to the operational assurance question of why an optimized CPU/GPU
+graph still represents the scientist's authored algorithm. It is stronger than numerical regression
+testing because the evidence states which dependencies and kind transitions are authorized and
+rejects a numerically innocent transformation when it erases provenance.
 
 The final deployment assurance case would add independent evidence below the tape: scheduler and
 checkpoint refinement, code-generator correctness, and validation of the compiled CPU/GPU program.
