@@ -1,0 +1,33 @@
+name: MathGraph PKC matcher qualification
+
+on:
+  push:
+    branches:
+      - mathgraph/automatic-match-inference-v1
+  workflow_dispatch:
+
+jobs:
+  matcher:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore Mathlib cache
+        run: |
+          lake exe cache get
+
+      - name: Verify existing CSE qualification
+        run: |
+          bash experiments/mathgraph-cse-match-transport-v1/verify.sh
+
+      - name: Compile recorded-match inference test
+        run: |
+          experiment_build="$PWD/.lake/build/mathgraph-experiments"
+          lean_path="$(lake env printenv LEAN_PATH)"
+          LEAN_PATH="$experiment_build:$lean_path" lean \
+            experiments/mathgraph-cse-match-transport-v1/RecordedMatchInferenceTests.lean
