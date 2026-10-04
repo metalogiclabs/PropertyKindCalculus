@@ -39,4 +39,7 @@ jobs:
           experiment_build="$PWD/.lake/build/mathgraph-experiments"
           lean_path="$(lake env printenv LEAN_PATH)"
           LEAN_PATH="$experiment_build:$lean_path" lean \
+            -o "$experiment_build/RecordedMatchInference.olean" \
+            experiments/mathgraph-cse-match-transport-v1/RecordedMatchInference.lean
+          LEAN_PATH="$experiment_build:$lean_path" lean \
             experiments/mathgraph-cse-match-transport-v1/RecordedMatchInferenceTests.lean
