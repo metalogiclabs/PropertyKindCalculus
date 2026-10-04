@@ -31,6 +31,12 @@ jobs:
         run: |
           lake exe cache get
 
+      - name: Restore PKC build cache
+        uses: actions/cache@v4
+        with:
+          path: .lake/build
+          key: mathgraph-pkc-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}
+
       - name: Build qualification prerequisites
         run: |
           lake build PropertyKindCalculus.Tests.Torch.TapeSeal
