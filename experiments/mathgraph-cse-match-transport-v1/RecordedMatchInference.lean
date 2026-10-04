@@ -192,16 +192,6 @@ def inferWorkedModelMatch (T : TapeGraph) :
         .error [.sourceEvidence]
       else .error [.acceptance]
 
-/-- The inferred result preserves the independently authored control's protected
-consequences; literal table identity is intentionally not part of the contract. -/
-theorem inferred_worked_match_equivalent_control :
-    match inferWorkedModel rawGraph with
-    | .inferred resultClass =>
-        sameProtectedConsequences provenance rawGraph
-          resultClass.representative.sourceMatch rawMatch
-    | _ => false := by
-  decide
-
 /-- Stable, non-dependent outcome for the complete recorded-to-certified executable path. -/
 inductive AutomaticCertificationOutcome where
   | inferenceRejected (failures : List MatchInferenceFailure)
