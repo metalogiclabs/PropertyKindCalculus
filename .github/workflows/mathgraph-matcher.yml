@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - mathgraph/automatic-match-inference-v1
+      - mathgraph/matcher-equivalence-obstruction-v2
   workflow_dispatch:
 
 concurrency:
