@@ -68,6 +68,10 @@ jobs:
             "$experiment_dir/RecordedMatchInference.lean"
           LEAN_PATH="$experiment_build:$lean_path" lean \
             "$experiment_dir/RecordedMatchInferenceTests.lean"
+          LEAN_PATH="$experiment_build:$lean_path" lean --run \
+            "$experiment_dir/PkcCertifyRecording.lean" > /tmp/pkc-certify-recording.yml
+          cmp /tmp/pkc-certify-recording.yml \
+            "$experiment_dir/PKC_CERTIFY_RECORDING_MANIFEST.yml"
 
       - name: Verify complete CSE and matcher qualification
         run: |
