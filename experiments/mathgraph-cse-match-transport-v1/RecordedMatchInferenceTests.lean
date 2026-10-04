@@ -1,8 +1,7 @@
 /-
-# RED test: infer the worked-model match from recorder evidence
+# Worked-model match inference tests
 
-The implementation must reconstruct the independently authored `rawMatch`; the test imports
-the wished-for matcher API before that module exists so the first CI run proves the test is live.
+The matcher must reconstruct the independently authored `rawMatch` from recorder evidence.
 -/
 
 module
@@ -17,7 +16,9 @@ namespace PropertyKindCalculus.Experiments.RecordedMatchInferenceTests
 open PropertyKindCalculus.Experiments.RecordedCseQualification
 open PropertyKindCalculus.Experiments.RecordedMatchInference
 
-#guard inferWorkedModelMatch rawGraph == .ok rawMatch
+#guard match inferWorkedModelMatch rawGraph with
+  | .ok inferred => inferred == rawMatch
+  | .error _ => false
 
 end PropertyKindCalculus.Experiments.RecordedMatchInferenceTests
 
