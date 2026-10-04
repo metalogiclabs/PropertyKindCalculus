@@ -119,7 +119,7 @@ def render : String :=
   | .ok (raw, _, _, _, _, _, _) =>
       let graph := ofTape raw
       let candidates := generateWorkedModelCandidates graph
-      match h : inferWorkedModel graph with
+      match inferWorkedModel graph with
       | .rejected obstruction => renderRejected raw.size candidates.length obstruction
       | .ambiguous classes separator =>
           String.intercalate "\n" (header ++ [
