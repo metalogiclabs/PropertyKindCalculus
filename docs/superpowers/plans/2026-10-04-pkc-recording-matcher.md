@@ -91,4 +91,3 @@
 - [ ] Document exact outcomes, the scope-necessity separator, and the dielectric evidence-plan residual.
 - [ ] Run the complete workflow from the final commit and require zero failures.
 - [ ] Publish only the Metalogic fork branch and update the existing ROS checkpoint with final evidence.
-

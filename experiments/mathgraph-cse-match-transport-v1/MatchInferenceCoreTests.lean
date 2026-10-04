@@ -42,6 +42,12 @@ def swappedSourceOwners : Match Nat where
   | .ambiguous _ separator => separator != none
   | _ => false
 
+#guard smallestSeparator [
+    ⟨.operationOwnership, 0⟩,
+    ⟨.componentOwnership, 7⟩,
+    ⟨.componentOwnership, 2⟩,
+    ⟨.occurrenceBoundary, 0⟩] == some ⟨.componentOwnership, 2⟩
+
 #guard match classifyCandidates provenance rawGraph [] with
   | .rejected obstruction => !obstruction.failures.isEmpty
   | _ => false

@@ -94,4 +94,3 @@ entrypoint, documentation, and a clean GitHub Actions qualification on the fork.
 This work does not prove dependency closure universally sufficient, infer metadata absent from the
 tape, prove generic numerical denotation preservation for CSE, or verify scheduler, checkpoint,
 CPU/GPU code generation, or machine code. It does not contact the original NASA/JPL repository.
-

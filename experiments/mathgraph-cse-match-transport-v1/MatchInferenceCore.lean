@@ -70,6 +70,11 @@ def canonicalVertices (T : TapeGraph) (vertices : List Nat) : List Nat :=
 def realizationAt? (m : Match ν) (occ : Nat) : Option Realized :=
   m.realized.find? fun r => r.occ == occ
 
+/-- Every realization row naming one occurrence. Acceptance does not currently require this
+list to be a singleton, so consequence extraction must not silently discard later rows. -/
+def realizationsAt (m : Match ν) (occ : Nat) : List Realized :=
+  m.realized.filter fun r => r.occ == occ
+
 /-- Observable boundary and silent realization attributed to one occurrence. -/
 structure OccurrenceConsequences where
   occurrence : Nat
@@ -89,18 +94,16 @@ def protectedConsequences [BEq ν] [BEq κ] (g : Provenance ν κ) (T : TapeGrap
     (m : Match ν) : ProtectedConsequences ν where
   componentOwners := (List.range T.size).map m.nodeOf?
   occurrences := (List.range g.occurrences.length).map fun i =>
-    match realizationAt? m i with
-    | none => ⟨i, [], [], []⟩
-    | some r => ⟨i,
+    match realizationsAt m i with
+    | [] => ⟨i, [], [], []⟩
+    | r :: rest => ⟨i,
         canonicalVertices T (m.frontier g r),
         canonicalVertices T (m.roots g r),
-        canonicalVertices T r.interior⟩
+        canonicalVertices T ((r :: rest).flatMap fun realized => realized.interior)⟩
   operationOwners := (List.range T.size).map fun v =>
     if T.isOp v then
       (List.range g.occurrences.length).filter fun i =>
-        match realizationAt? m i with
-        | none => false
-        | some r => (m.body g r).contains v
+        (realizationsAt m i).any fun r => (m.body g r).contains v
     else []
 
 def sameProtectedConsequences [BEq ν] [BEq κ] (g : Provenance ν κ)
@@ -171,6 +174,28 @@ def consequenceSeparator [BEq ν] (left right : ProtectedConsequences ν) :
           (firstDifference left.operationOwners right.operationOwners 0).map fun i =>
             ⟨.operationOwnership, i⟩
 
+def AmbiguityKind.rank : AmbiguityKind → Nat
+  | .componentOwnership => 0
+  | .occurrenceBoundary => 1
+  | .operationOwnership => 2
+
+def smallerSeparator (left right : AmbiguitySeparator) : AmbiguitySeparator :=
+  if left.kind.rank < right.kind.rank ||
+      (left.kind.rank == right.kind.rank && left.index <= right.index) then left else right
+
+def smallestSeparator : List AmbiguitySeparator → Option AmbiguitySeparator
+  | [] => none
+  | first :: rest => some (rest.foldl smallerSeparator first)
+
+def consequenceClassSeparators [BEq ν] [BEq κ]
+    {g : Provenance ν κ} {T : TapeGraph} :
+    List (ConsequenceClass g T) → List AmbiguitySeparator
+  | [] => []
+  | first :: rest =>
+      rest.filterMap (fun next =>
+        consequenceSeparator first.consequences next.consequences) ++
+      consequenceClassSeparators rest
+
 /-- A deterministic local witness for why no supplied candidate was admitted. -/
 structure MatchObstruction where
   failures : List MatchAcceptanceClause
@@ -225,8 +250,8 @@ def classifyCandidates [BEq ν] [BEq κ] (g : Provenance ν κ) (T : TapeGraph)
   | [] => .rejected (rejectedObstruction g T candidates)
   | [one] => .inferred one
   | first :: second :: rest =>
-      .ambiguous (first :: second :: rest)
-        (consequenceSeparator first.consequences second.consequences)
+      let classes := first :: second :: rest
+      .ambiguous classes (smallestSeparator (consequenceClassSeparators classes))
 
 end PropertyKindCalculus.Experiments.MatchInferenceCore
 
