@@ -47,6 +47,10 @@ jobs:
             "$experiment_dir/CseQuotientChecker.lean"
           LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/RecordedCseQualification.olean" \
             "$experiment_dir/RecordedCseQualification.lean"
+          LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CertifiedCseGate.olean" \
+            "$experiment_dir/CertifiedCseGate.lean"
+          LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CertifiedCseControls.olean" \
+            "$experiment_dir/CertifiedCseControls.lean"
           LEAN_PATH="$experiment_build:$lean_path" lean \
             -o "$experiment_build/MatchInferenceCore.olean" \
             "$experiment_dir/MatchInferenceCore.lean"
