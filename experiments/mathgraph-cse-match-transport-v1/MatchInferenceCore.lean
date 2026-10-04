@@ -206,7 +206,7 @@ deriving DecidableEq, Repr, BEq
 
 inductive MatchInferenceOutcome [BEq ν] [BEq κ]
     (g : Provenance ν κ) (T : TapeGraph) where
-  | inferred (class : ConsequenceClass g T)
+  | inferred (resultClass : ConsequenceClass g T)
   | ambiguous (classes : List (ConsequenceClass g T))
       (separator : Option AmbiguitySeparator)
   | rejected (obstruction : MatchObstruction)
