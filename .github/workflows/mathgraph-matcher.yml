@@ -35,16 +35,24 @@ jobs:
         run: |
           lake build PropertyKindCalculus.Tests.Torch.TapeSeal
 
-      - name: Verify existing CSE qualification
-        run: |
-          bash experiments/mathgraph-cse-match-transport-v1/verify.sh
-
       - name: Compile consequence-classifier controls
         run: |
           experiment_build="$PWD/.lake/build/mathgraph-experiments"
+          experiment_dir="$PWD/experiments/mathgraph-cse-match-transport-v1"
+          mkdir -p "$experiment_build"
           lean_path="$(lake env printenv LEAN_PATH)"
+          LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CseMatchTransport.olean" \
+            "$experiment_dir/CseMatchTransport.lean"
+          LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CseQuotientChecker.olean" \
+            "$experiment_dir/CseQuotientChecker.lean"
+          LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/RecordedCseQualification.olean" \
+            "$experiment_dir/RecordedCseQualification.lean"
           LEAN_PATH="$experiment_build:$lean_path" lean \
             -o "$experiment_build/MatchInferenceCore.olean" \
-            experiments/mathgraph-cse-match-transport-v1/MatchInferenceCore.lean
+            "$experiment_dir/MatchInferenceCore.lean"
           LEAN_PATH="$experiment_build:$lean_path" lean \
-            experiments/mathgraph-cse-match-transport-v1/MatchInferenceCoreTests.lean
+            "$experiment_dir/MatchInferenceCoreTests.lean"
+
+      - name: Verify complete CSE and matcher qualification
+        run: |
+          bash experiments/mathgraph-cse-match-transport-v1/verify.sh
