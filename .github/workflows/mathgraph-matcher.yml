@@ -17,6 +17,11 @@ jobs:
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
+      - name: Install test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
       - name: Restore Mathlib cache
         run: |
           lake exe cache get
