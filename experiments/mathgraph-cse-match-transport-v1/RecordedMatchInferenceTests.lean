@@ -9,6 +9,7 @@ module
 
 public import RecordedMatchInference
 public import RecordedCseQualification
+public meta import RecordedMatchInference
 
 @[expose] public section Blanket
 
