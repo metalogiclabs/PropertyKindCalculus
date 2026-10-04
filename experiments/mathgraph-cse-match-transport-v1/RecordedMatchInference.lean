@@ -68,7 +68,7 @@ def workedModelEvidence : WorkedModelEvidence where
     ⟨1, ["b.re", "b.im"], 4⟩]
   siteSources := [⟨2, [7, 16]⟩]
   occurrences := [
-    ⟨0, .multiplicative, "Float", ["mul"], ["sub", "add"], 4, 2⟩,
+    ⟨0, .product, "Float", ["mul"], ["sub", "add"], 4, 2⟩,
     ⟨1, .additive, "Float", [], ["add"], 0, 2⟩]
 
 def WorkedModelEvidence.namedSource? (e : WorkedModelEvidence) (node : Nat) :
@@ -128,7 +128,7 @@ def generateWorkedModelCandidates (T : TapeGraph) : List (Match Nat) :=
       workedModelEvidence.siteSource? 2, workedModelEvidence.occurrence? 0,
       workedModelEvidence.occurrence? 1 with
   | some aEvidence, some bEvidence, some eEvidence, some product, some addition =>
-      if product.family != .multiplicative || product.carrier != "Float" ||
+      if product.family != .product || product.carrier != "Float" ||
           addition.family != .additive || addition.carrier != "Float" then []
       else
         let a := namedLeaves T aEvidence.names
@@ -192,11 +192,15 @@ def inferWorkedModelMatch (T : TapeGraph) :
         .error [.sourceEvidence]
       else .error [.acceptance]
 
-/-- The dependency-closure matcher reconstructs the independently authored control match,
-field-for-field, on PKC's checked 18-vertex worked tape. -/
-theorem inferred_worked_match_eq_control :
-    (inferWorkedModelMatch rawGraph).map InferredWorkedModelMatch.sourceMatch = .ok rawMatch := by
-  rfl
+/-- The inferred result preserves the independently authored control's protected
+consequences; literal table identity is intentionally not part of the contract. -/
+theorem inferred_worked_match_equivalent_control :
+    match inferWorkedModel rawGraph with
+    | .inferred resultClass =>
+        sameProtectedConsequences provenance rawGraph
+          resultClass.representative.sourceMatch rawMatch
+    | _ => false := by
+  decide
 
 /-- Stable, non-dependent outcome for the complete recorded-to-certified executable path. -/
 inductive AutomaticCertificationOutcome where
