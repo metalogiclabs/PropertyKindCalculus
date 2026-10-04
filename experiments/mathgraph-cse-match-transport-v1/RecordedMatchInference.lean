@@ -16,6 +16,7 @@ port/recording-site metadata and a realization table indexed by family and carri
 module
 
 public import CertifiedCseGate
+public import MatchInferenceCore
 
 @[expose] public section Blanket
 
@@ -25,7 +26,62 @@ open PropertyKindCalculus
 open PropertyKindCalculus.Paradigm
 open PropertyKindCalculus.Paradigm.TapeCodegen (ofTape)
 open PropertyKindCalculus.Experiments.CertifiedCseGate
+open PropertyKindCalculus.Experiments.MatchInferenceCore
 open PropertyKindCalculus.Experiments.RecordedCseQualification
+
+/-! ## Explicit recorder evidence -/
+
+/-- Names and expected emission count for one named source node. -/
+structure NamedSourceEvidence where
+  node : Nat
+  names : List String
+  expectedComponents : Nat
+deriving DecidableEq, Repr, BEq
+
+/-- Recorder-site identities for a source whose projected tape vertices are anonymous. -/
+structure SiteSourceEvidence where
+  node : Nat
+  recordingSites : List Nat
+deriving DecidableEq, Repr, BEq
+
+/-- The finite realization vocabulary used to recognize one provenance occurrence. -/
+structure OccurrenceEvidence where
+  occurrence : Nat
+  family : Provenance.EdgeFamily
+  carrier : String
+  interiorNames : List String
+  rootNames : List String
+  expectedInterior : Nat
+  expectedRoots : Nat
+deriving DecidableEq, Repr, BEq
+
+/-- Evidence that survives the recorder boundary for the checked complex worked model. -/
+structure WorkedModelEvidence where
+  namedSources : List NamedSourceEvidence
+  siteSources : List SiteSourceEvidence
+  occurrences : List OccurrenceEvidence
+deriving DecidableEq, Repr, BEq
+
+def workedModelEvidence : WorkedModelEvidence where
+  namedSources := [
+    ⟨0, ["a.re", "a.im"], 4⟩,
+    ⟨1, ["b.re", "b.im"], 4⟩]
+  siteSources := [⟨2, [7, 16]⟩]
+  occurrences := [
+    ⟨0, .multiplicative, "Float", ["mul"], ["sub", "add"], 4, 2⟩,
+    ⟨1, .additive, "Float", [], ["add"], 0, 2⟩]
+
+def WorkedModelEvidence.namedSource? (e : WorkedModelEvidence) (node : Nat) :
+    Option NamedSourceEvidence :=
+  e.namedSources.find? fun source => source.node == node
+
+def WorkedModelEvidence.siteSource? (e : WorkedModelEvidence) (node : Nat) :
+    Option SiteSourceEvidence :=
+  e.siteSources.find? fun source => source.node == node
+
+def WorkedModelEvidence.occurrence? (e : WorkedModelEvidence) (occurrence : Nat) :
+    Option OccurrenceEvidence :=
+  e.occurrences.find? fun shape => shape.occurrence == occurrence
 
 /-- Stable residual classes for the first automatic matcher boundary. -/
 inductive MatchInferenceFailure where
@@ -60,35 +116,81 @@ def readyNamedOps (T : TapeGraph) (available claimed : List Nat)
       names.contains ((T.name? v).getD "") &&
       (T.parents v).all available.contains
 
+/-- Anonymous leaves selected by recorder identity, never by their numerical values. -/
+def siteLeaves (T : TapeGraph) (sites : List Nat) : List Nat :=
+  sites.filter fun v => v < T.size && T.isLeaf v && T.name? v == none
+
+/-- Generate the finite candidate set from recorder evidence and dependency closure.  An
+extra tape leaf intentionally does not suppress candidate construction: `Match.accepts` must
+name that undeclared dependency in its residual instead of the generator hiding it. -/
+def generateWorkedModelCandidates (T : TapeGraph) : List (Match Nat) :=
+  match workedModelEvidence.namedSource? 0, workedModelEvidence.namedSource? 1,
+      workedModelEvidence.siteSource? 2, workedModelEvidence.occurrence? 0,
+      workedModelEvidence.occurrence? 1 with
+  | some aEvidence, some bEvidence, some eEvidence, some product, some addition =>
+      if product.family != .multiplicative || product.carrier != "Float" ||
+          addition.family != .additive || addition.carrier != "Float" then []
+      else
+        let a := namedLeaves T aEvidence.names
+        let b := namedLeaves T bEvidence.names
+        let e := siteLeaves T eEvidence.recordingSites
+        if a.length != aEvidence.expectedComponents ||
+            b.length != bEvidence.expectedComponents ||
+            e.length != eEvidence.recordingSites.length then []
+        else
+          let productFrontier := a ++ b
+          let productInterior := readyNamedOps T productFrontier [] product.interiorNames
+          let c := readyNamedOps T (productFrontier ++ productInterior)
+            productInterior product.rootNames
+          if productInterior.length != product.expectedInterior ||
+              c.length != product.expectedRoots then []
+          else
+            let y := readyNamedOps T (c ++ e) (productInterior ++ c) addition.rootNames
+            if addition.expectedInterior != 0 || y.length != addition.expectedRoots then []
+            else [{
+              components := [(0, a), (1, b), (2, e), (3, c), (4, y)]
+              realized := [⟨product.occurrence, productInterior⟩,
+                ⟨addition.occurrence, []⟩]
+            }]
+  | _, _, _, _, _ => []
+
+/-- Infer one accepted consequence class, expose protected ambiguity, or retain the exact
+acceptance obstruction. -/
+def inferWorkedModel (T : TapeGraph) : MatchInferenceOutcome provenance T :=
+  classifyCandidates provenance T (generateWorkedModelCandidates T)
+
+/-- Strength of the policy conclusion, separate from the match outcome itself. -/
+inductive WarrantStatus where
+  | warrantedBounded
+  | unknown
+  | rejected
+deriving DecidableEq, Repr, BEq
+
+/-- Dependency closure is warranted only for the checked 18-vertex worked model. -/
+def workedModelWarrant (T : TapeGraph) : WarrantStatus :=
+  match inferWorkedModel T with
+  | .inferred resultClass =>
+      if T == rawGraph && sameProtectedConsequences provenance T
+          resultClass.representative.sourceMatch rawMatch then
+        .warrantedBounded
+      else .unknown
+  | .ambiguous _ _ => .unknown
+  | .rejected _ => .rejected
+
 /-- Infer the independently authored source match for the recorded `y = a * b + e` model.
 The constant ids are recording-site evidence: the projected tape intentionally carries no
 identity for anonymous constant leaves, so numerical equality is never used as identity. -/
 def inferWorkedModelMatch (T : TapeGraph) :
     Except (List MatchInferenceFailure) (InferredWorkedModelMatch T) :=
-  let a := namedLeaves T ["a.re", "a.im"]
-  let b := namedLeaves T ["b.re", "b.im"]
-  let e := [7, 16].filter fun v => T.isLeaf v && T.name? v == none
-  if a.length != 4 || b.length != 4 || e.length != 2 then
-    .error [.sourceEvidence]
-  else
-    let productFrontier := a ++ b
-    let productInterior := readyNamedOps T productFrontier [] ["mul"]
-    let c := readyNamedOps T (productFrontier ++ productInterior)
-      productInterior ["sub", "add"]
-    if productInterior.length != 4 || c.length != 2 then
-      .error [.realizationShape]
-    else
-      let y := readyNamedOps T (c ++ e) (productInterior ++ c) ["add"]
-      if y.length != 2 then
-        .error [.realizationShape]
-      else
-        let candidate : Match Nat := {
-          components := [(0, a), (1, b), (2, e), (3, c), (4, y)]
-          realized := [⟨0, productInterior⟩, ⟨1, []⟩]
-        }
-        match h : candidate.accepts provenance T with
-        | true => .ok ⟨candidate, h⟩
-        | false => .error [.acceptance]
+  match inferWorkedModel T with
+  | .inferred resultClass =>
+      .ok ⟨resultClass.representative.sourceMatch,
+        resultClass.representative.accepted⟩
+  | .ambiguous _ _ => .error [.acceptance]
+  | .rejected obstruction =>
+      if obstruction.failures.contains .noCandidates then
+        .error [.sourceEvidence]
+      else .error [.acceptance]
 
 /-- The dependency-closure matcher reconstructs the independently authored control match,
 field-for-field, on PKC's checked 18-vertex worked tape. -/
