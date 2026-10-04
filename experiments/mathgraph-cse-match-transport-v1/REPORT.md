@@ -134,6 +134,30 @@ one undeclared constant to the worked recording returns `REJECTED` with
 `source-match-acceptance` and `leaves-are-sources`.
 Every audit bit is printed, and the command appends a SHA-256 digest of its manifest.
 
+## Automatic match inference on the recorded worked model
+
+`RecordedMatchInference.lean` implements the missing executable step for PKC's concrete
+`y = a * b + e` recording. The matcher uses recorder-visible names for port emissions,
+recording-site identity for anonymous constants, and dependency closure for occurrence
+membership. It returns a table only when the existing `Match.accepts` checker admits it, retaining
+that admission proof in the result.
+
+The inferred match is checked field-for-field against the independently authored 18-vertex
+`rawMatch`; the actual recording then flows directly through `certifyCse` to the existing accepted
+optimized match and strong/weak bisimulation authority. Four negative controls distinguish
+ambiguous source evidence, missing recording-site evidence, malformed realization shape, and an
+otherwise undeclared constant.
+
+Run the complete path with:
+
+```bash
+experiments/mathgraph-cse-match-transport-v1/pkc-match-certify
+```
+
+This establishes dependency closure as a sufficient policy for the checked worked model, not as a
+universal theorem. Generalization to the dielectric model requires harvested source metadata and
+the family/carrier realization table already anticipated in PKC's capstone ledger.
+
 ## Actual recorded worked-model qualification
 
 The qualification records PKC's existing complex model `y = a * b + e` through the real tape

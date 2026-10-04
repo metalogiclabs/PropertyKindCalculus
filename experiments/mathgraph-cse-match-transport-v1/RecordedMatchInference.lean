@@ -15,7 +15,7 @@ port/recording-site metadata and a realization table indexed by family and carri
 
 module
 
-public import RecordedCseQualification
+public import CertifiedCseGate
 
 @[expose] public section Blanket
 
@@ -23,6 +23,8 @@ namespace PropertyKindCalculus.Experiments.RecordedMatchInference
 
 open PropertyKindCalculus
 open PropertyKindCalculus.Paradigm
+open PropertyKindCalculus.Paradigm.TapeCodegen (ofTape)
+open PropertyKindCalculus.Experiments.CertifiedCseGate
 open PropertyKindCalculus.Experiments.RecordedCseQualification
 
 /-- Stable residual classes for the first automatic matcher boundary. -/
@@ -31,6 +33,17 @@ inductive MatchInferenceFailure where
   | realizationShape
   | acceptance
 deriving DecidableEq, Repr, BEq
+
+def MatchInferenceFailure.label : MatchInferenceFailure → String
+  | .sourceEvidence => "source-evidence"
+  | .realizationShape => "realization-shape"
+  | .acceptance => "match-acceptance"
+
+/-- Successful inference retains the kernel-checkable admission fact consumed by PKC's
+bisimulation theorems.  The matcher does not merely return an unchecked table. -/
+structure InferredWorkedModelMatch (T : TapeGraph) where
+  sourceMatch : Match Nat
+  accepted : sourceMatch.Accepts provenance T
 
 /-- All leaf emissions carrying one of the recorder names, in tape order. -/
 def namedLeaves (T : TapeGraph) (names : List String) : List Nat :=
@@ -51,7 +64,7 @@ def readyNamedOps (T : TapeGraph) (available claimed : List Nat)
 The constant ids are recording-site evidence: the projected tape intentionally carries no
 identity for anonymous constant leaves, so numerical equality is never used as identity. -/
 def inferWorkedModelMatch (T : TapeGraph) :
-    Except (List MatchInferenceFailure) (Match Nat) :=
+    Except (List MatchInferenceFailure) (InferredWorkedModelMatch T) :=
   let a := namedLeaves T ["a.re", "a.im"]
   let b := namedLeaves T ["b.re", "b.im"]
   let e := [7, 16].filter fun v => T.isLeaf v && T.name? v == none
@@ -73,10 +86,33 @@ def inferWorkedModelMatch (T : TapeGraph) :
           components := [(0, a), (1, b), (2, e), (3, c), (4, y)]
           realized := [⟨0, productInterior⟩, ⟨1, []⟩]
         }
-        if candidate.accepts provenance T then
-          .ok candidate
-        else
-          .error [.acceptance]
+        match h : candidate.accepts provenance T with
+        | true => .ok ⟨candidate, h⟩
+        | false => .error [.acceptance]
+
+/-- The dependency-closure matcher reconstructs the independently authored control match,
+field-for-field, on PKC's checked 18-vertex worked tape. -/
+theorem inferred_worked_match_eq_control :
+    (inferWorkedModelMatch rawGraph).map InferredWorkedModelMatch.sourceMatch = .ok rawMatch := by
+  rfl
+
+/-- Stable, non-dependent outcome for the complete recorded-to-certified executable path. -/
+inductive AutomaticCertificationOutcome where
+  | inferenceRejected (failures : List MatchInferenceFailure)
+  | optimizationRejected (failures : List TapeQuotientClause)
+  | certified
+deriving DecidableEq, Repr, BEq
+
+/-- Record the actual worked computation, infer an accepted match from its graph, run the actual
+CSE pass, and accept the optimized graph only through the existing proof-carrying gate. -/
+def certifyInferredWorkedRecording : Except String AutomaticCertificationOutcome :=
+  recordRawAndCompact.map fun (raw, _, _, _, _, _, _) =>
+    match inferWorkedModelMatch (ofTape raw) with
+    | .error failures => .inferenceRejected failures
+    | .ok inferred =>
+        match certifyCse provenance raw inferred.sourceMatch with
+        | .certified _ => .certified
+        | .rejected rejected => .optimizationRejected rejected.failures
 
 end PropertyKindCalculus.Experiments.RecordedMatchInference
 

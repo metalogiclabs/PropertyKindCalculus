@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+experiment_dir="$repo_root/experiments/mathgraph-cse-match-transport-v1"
+experiment_build="$repo_root/.lake/build/mathgraph-experiments"
+
+cd "$repo_root"
+mkdir -p "$experiment_build"
+
+lake build PropertyKindCalculus.Tests.Torch.TapeSeal >&2
+lean_path="$(lake env printenv LEAN_PATH)"
+
+for module in CseMatchTransport CseQuotientChecker RecordedCseQualification CertifiedCseGate RecordedMatchInference; do
+  LEAN_PATH="$experiment_build:$lean_path" lake env lean \
+    -o "$experiment_build/$module.olean" \
+    "$experiment_dir/$module.lean" >&2
+done
+
+LEAN_PATH="$experiment_build:$lean_path" lake env lean --run \
+  "$experiment_dir/PkcMatchCertify.lean"
