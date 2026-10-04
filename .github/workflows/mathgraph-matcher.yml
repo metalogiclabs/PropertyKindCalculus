@@ -52,6 +52,11 @@ jobs:
             "$experiment_dir/MatchInferenceCore.lean"
           LEAN_PATH="$experiment_build:$lean_path" lean \
             "$experiment_dir/MatchInferenceCoreTests.lean"
+          LEAN_PATH="$experiment_build:$lean_path" lean \
+            -o "$experiment_build/RecordedMatchInference.olean" \
+            "$experiment_dir/RecordedMatchInference.lean"
+          LEAN_PATH="$experiment_build:$lean_path" lean \
+            "$experiment_dir/RecordedMatchInferenceTests.lean"
 
       - name: Verify complete CSE and matcher qualification
         run: |
