@@ -142,21 +142,25 @@ recording-site identity for anonymous constants, and dependency closure for occu
 membership. It returns a table only when the existing `Match.accepts` checker admits it, retaining
 that admission proof in the result.
 
-The inferred match is checked field-for-field against the independently authored 18-vertex
-`rawMatch`; the actual recording then flows directly through `certifyCse` to the existing accepted
-optimized match and strong/weak bisimulation authority. Four negative controls distinguish
-ambiguous source evidence, missing recording-site evidence, malformed realization shape, and an
-otherwise undeclared constant.
+The inferred match is compared with the independently authored 18-vertex `rawMatch` by protected
+provenance consequences rather than literal table equality; the actual recording then flows
+directly through `certifyCse` to accepted optimized matching and strong/weak bisimulation authority.
+The controls distinguish missing evidence and rejected topology from genuine protected ambiguity.
+In particular, repeated tape-indistinguishable calls admit provenance-changing accepted matches,
+which establishes the need for explicit recorder scope evidence in the general case.
 
 Run the complete path with:
 
 ```bash
-experiments/mathgraph-cse-match-transport-v1/pkc-match-certify
+experiments/mathgraph-cse-match-transport-v1/pkc-certify-recording
 ```
 
-This establishes dependency closure as a sufficient policy for the checked worked model, not as a
-universal theorem. Generalization to the dielectric model requires harvested source metadata and
-the family/carrier realization table already anticipated in PKC's capstone ledger.
+This establishes dependency closure as a sufficient `WARRANTED_BOUNDED` policy for the checked
+worked model, not as a universal theorem. Generalization to the dielectric model requires harvested
+source metadata, the family/carrier realization table, and explicit member-call scope markers.
+The command reports `semantic_seal` and `semantic_seal_of_denotes` as conditional authority with
+their tape-well-formedness, output-selection, evaluation, and carrier-denotation obligations; it
+does not claim that match inference alone discharges them.
 
 ## Actual recorded worked-model qualification
 

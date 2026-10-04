@@ -19,6 +19,10 @@ LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CertifiedCse
   "$experiment_dir/CertifiedCseGate.lean"
 LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/CertifiedCseControls.olean" \
   "$experiment_dir/CertifiedCseControls.lean"
+LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/MatchInferenceCore.olean" \
+  "$experiment_dir/MatchInferenceCore.lean"
+LEAN_PATH="$experiment_build:$lean_path" lean \
+  "$experiment_dir/MatchInferenceCoreTests.lean"
 LEAN_PATH="$experiment_build:$lean_path" lean -o "$experiment_build/RecordedMatchInference.olean" \
   "$experiment_dir/RecordedMatchInference.lean"
 LEAN_PATH="$experiment_build:$lean_path" lean \
@@ -46,6 +50,17 @@ rg -q '^match_equals_independent_control: true$' "$automatic_manifest"
 rg -q '^source_match_accepted: true$' "$automatic_manifest"
 cmp "$automatic_manifest" "$experiment_dir/AUTOMATIC_CERTIFICATION_MANIFEST.yml"
 
+recording_manifest="$(mktemp)"
+trap 'rm -f "$manifest" "$automatic_manifest" "$recording_manifest"' EXIT
+LEAN_PATH="$experiment_build:$lean_path" lean --run \
+  "$experiment_dir/PkcCertifyRecording.lean" > "$recording_manifest"
+rg -q '^  status: INFERRED$' "$recording_manifest"
+rg -q '^  warrant: WARRANTED_BOUNDED$' "$recording_manifest"
+rg -q '^  status: OBLIGATIONS_REMAIN$' "$recording_manifest"
+rg -q '^  explicit_recorder_scopes: REQUIRED_FOR_GENERAL_INTENDED_CALL_RECOVERY$' \
+  "$recording_manifest"
+cmp "$recording_manifest" "$experiment_dir/PKC_CERTIFY_RECORDING_MANIFEST.yml"
+
 lake build PropertyKindCalculus.Tests.Graph.Bisimulation
 
 # Replay the preceding executable CSE controls that produced the remap used by the
@@ -61,10 +76,13 @@ if rg -n '\b(sorry|admit|native_decide)\b' \
     experiments/mathgraph-cse-match-transport-v1/RecordedCseQualification.lean \
     experiments/mathgraph-cse-match-transport-v1/CertifiedCseGate.lean \
     experiments/mathgraph-cse-match-transport-v1/CertifiedCseControls.lean \
+    experiments/mathgraph-cse-match-transport-v1/MatchInferenceCore.lean \
+    experiments/mathgraph-cse-match-transport-v1/MatchInferenceCoreTests.lean \
     experiments/mathgraph-cse-match-transport-v1/PkcCertify.lean \
     experiments/mathgraph-cse-match-transport-v1/RecordedMatchInference.lean \
     experiments/mathgraph-cse-match-transport-v1/RecordedMatchInferenceTests.lean \
-    experiments/mathgraph-cse-match-transport-v1/PkcMatchCertify.lean; then
+    experiments/mathgraph-cse-match-transport-v1/PkcMatchCertify.lean \
+    experiments/mathgraph-cse-match-transport-v1/PkcCertifyRecording.lean; then
   echo "forbidden proof placeholder or native_decide found" >&2
   exit 1
 fi
