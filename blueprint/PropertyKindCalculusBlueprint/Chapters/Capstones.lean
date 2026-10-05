@@ -483,10 +483,11 @@ definition already prices.
 *Contraction makes the bisimulation strong.* Under acceptance and well-formedness, `R`
 restricted to the observable vertices — node to component — is a strong bisimulation
 between `g` and {uses "cap_def_contraction"}[the contracted tape graph]: every hop of `g`
-is matched by one hyperedge of the contraction and conversely, with no silent step, and
-once the two node-identity mismatches are quotiented away it is an isomorphism of ordered
-hypergraphs — compaction, by matching against a hypergraph quotiented by derivation
-equality; nominal selection, by matching per branch. The contraction itself — a component
+is matched by one hyperedge of the contraction and conversely, with no silent step. The
+relation is a bisimulation and not a bijection: a node carries as many components as the
+match gives it, for two reasons — compaction, which matches against a hypergraph
+quotiented by derivation equality, and nominal selection, which matches per branch. The
+contraction itself — a component
 to every component of its node, a root to every interior vertex of its realization — is a
 weak bisimulation between the contracted and the actual tape graph
 (`isSWBisimulation_contraction`), and {uses "cap_def_bisimulation"}[the weak bisimulation]
