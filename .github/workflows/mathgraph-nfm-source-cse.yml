@@ -44,3 +44,11 @@ jobs:
       - name: Run checked source identity and missing-scope falsifiers
         run: |
           lake env lean experiments/nfm2027-source-aware-cse-v1/ScopedCseProbe.lean
+
+      - name: Compile real AVS recording example
+        run: lake build PropertyKindCalculus.Examples.TapeCodegenEndToEnd
+
+      - name: Observe source-identity ambiguity on the real recorded AVS tape
+        run: |
+          lake env lean experiments/nfm2027-source-aware-cse-v1/AvsRecordedTapeAudit.lean
+
