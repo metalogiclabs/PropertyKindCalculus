@@ -17,6 +17,28 @@ jobs:
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
+      - name: Fetch exact pinned FloatLib object explicitly
+        run: |
+          set -euo pipefail
+          pin="$(python3 - <<'PY'
+import json
+with open('lake-manifest.json', encoding='utf-8') as f:
+    manifest = json.load(f)
+for p in manifest['packages']:
+    if p['name'] == 'floatlib':
+        print(p['rev'])
+        break
+else:
+    raise SystemExit('floatlib pin not found')
+PY
+          )"
+          mkdir -p .lake/packages/floatlib
+          git -C .lake/packages/floatlib init
+          git -C .lake/packages/floatlib remote add origin https://github.com/lean-dojo/FloatLib.git
+          git -C .lake/packages/floatlib fetch --depth=1 origin "$pin"
+          git -C .lake/packages/floatlib checkout --detach "$pin"
+          git -C .lake/packages/floatlib cat-file -e "${pin}^{tree}"
+
       - name: Restore pinned Mathlib cache
         run: lake exe cache get
 
