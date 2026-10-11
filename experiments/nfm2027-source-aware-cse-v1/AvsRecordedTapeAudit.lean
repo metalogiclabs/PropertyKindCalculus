@@ -1,12 +1,12 @@
 /-
-NFM 2027 coauthor-side source-identity census on the actual AVS residual +
-four Jacobian outputs recorded by PKC's existing TapeCodegenEndToEnd.recordRaw.
+Reproducible numeric-sharing census on PKC's recorded AVS residual and four
+Jacobian outputs (TapeCodegenEndToEnd.recordRaw).
 
-This is NOT a verifier for scientific-source identity. It measures only which
-anonymous constant leaves have equal stored Float bits and which such leaves
-the existing cseCompact maps to a common output vertex. When recorder-site
-identity is absent, that is a potential provenance ambiguity rather than proof
-that two distinct scientific sources were merged.
+This is a measurement of bit-equal anonymous constant leaves and their images
+under the existing cseCompact pass, not an audit of scientific-source identity.
+The tape does not encode whether a repeated numeric literal is an independently
+attested source or a shared structural constant. The result therefore cannot
+classify any numerical merge as a scientific-provenance violation.
 -/
 
 module
@@ -50,8 +50,7 @@ def mergedAnonymousPairs (t : Tape Float) : List (Nat × Nat × Bits) :=
   (equalValuePairs t).filter fun (i, j, _) =>
     remap.getD i i == remap.getD j j
 
-/-- Independent example: one numerical op may legitimately be commoned,
-and one leaf merge may violate source identity; classify nothing from bits. -/
+/-- Report numerical sharing without assigning any source-equivalence meaning. -/
 def report : IO Unit := do
   match recordRaw with
   | .error e => throw (IO.userError s!"AVS recording failed: {e}")
@@ -71,6 +70,22 @@ def report : IO Unit := do
     IO.println "source_identity_status: UNKNOWN_NOT_RECORDED"
     IO.println "scientific_provenance_violation: NOT_INFERRED_FROM_VALUE_BITS"
 
+/-- Freeze the observed census of the pinned AVS recording. A change in
+the recording or CSE implementation must explicitly requalify these counts;
+passing this check does not establish provenance or GPU correctness. -/
+def expectedCensus : Bool :=
+  match recordRaw with
+  | .error _ => false
+  | .ok (t, outputs) =>
+      let (tc, _) := cseCompact t
+      t.size == 54 &&
+      tc.size == 28 &&
+      outputs.length == 5 &&
+      (anonymousLeaves t).length == 11 &&
+      (equalValuePairs t).length == 21 &&
+      (mergedAnonymousPairs t).length == 21
+
+#guard expectedCensus
 #eval report
 
 end PropertyKindCalculus.Experiments.AvsTapeAudit

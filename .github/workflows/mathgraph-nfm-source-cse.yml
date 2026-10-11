@@ -1,4 +1,4 @@
-name: NFM PKC source identity at current upstream pin
+name: PKC bounded provenance/CSE research controls
 
 on:
   push:
@@ -41,14 +41,14 @@ jobs:
         run: |
           lake build PropertyKindCalculus.Torch.Paradigm.TapeCodegen PropertyKindCalculus.Graph.Bisimulation
 
-      - name: Run checked source identity and missing-scope falsifiers
+      - name: Check bounded source-identity and missing-metadata controls
         run: |
           lake env lean experiments/nfm2027-source-aware-cse-v1/ScopedCseProbe.lean
 
       - name: Compile real AVS recording example
         run: lake build PropertyKindCalculus.Examples.TapeCodegenEndToEnd
 
-      - name: Observe source-identity ambiguity on the real recorded AVS tape
+      - name: Check and report numerical sharing in the recorded AVS tape
         run: |
           lake env lean experiments/nfm2027-source-aware-cse-v1/AvsRecordedTapeAudit.lean
 

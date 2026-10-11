@@ -1,10 +1,12 @@
 /-
-NFM 2027 coauthor-side falsifier: the minimal source-identity boundary for CSE.
+Research control: a bounded source-identity distinction for common-subexpression
+elimination (CSE) over a recorded tape.
 
-Do NOT replace the upstream optimizer with this prototype. This experiment is a
-single exact comparison: under identical floating-point bits, can CSE retain two
-metrologically distinct declared sources while still merging repeated emissions
-of one source? Missing source evidence must not be guessed.
+This independent experiment is not a replacement for PKC's upstream optimizer.
+It checks whether explicit, externally supplied source identity can preserve two
+distinct attested sources with identical floating-point values while still
+permitting repeated emissions of one source to share a vertex. Missing source
+information causes refusal rather than a guessed assignment.
 
 The general recorder occurrence/scope problem and CPU/GPU equivalence remain open.
 -/
@@ -41,6 +43,9 @@ def cseScoped (owner : Nat → Option Nat) (t : Tape Float) :
   let mut newTape : Tape Float := Tape.empty
   let mut remap : Array Nat := Array.mkEmpty t.size
   let mut memo : Std.HashMap ScopedKey Nat := {}
+  -- As the pass processes nodes in original order, remap.size is the original
+  -- node index for this iteration. This experiment does not prove a universal
+  -- loop invariant or infer owner metadata from the tape.
   for node in t.nodes do
     let sourceClass : Option Nat ←
       if node.parents.isEmpty && node.name == none then
@@ -61,7 +66,7 @@ def cseScoped (owner : Nat → Option Nat) (t : Tape Float) :
   pure (newTape, remap)
 
 /-- Different declared source classes make the keys unequal independently of
-the floating-point payload. This is a pure equality fact, not a backend assumption. -/
+the floating-point payload. This local key inequality does not prove whole-pass semantic soundness. -/
 theorem distinct_sources_distinct_keys (a b : Nat) (h : a ≠ b)
     (r : Array Nat) (x y : Node Float) :
     ((some a, nodeKey r x) : ScopedKey) ≠ ((some b, nodeKey r y) : ScopedKey) := by
