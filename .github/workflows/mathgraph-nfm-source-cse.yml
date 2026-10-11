@@ -20,18 +20,7 @@ jobs:
       - name: Fetch exact pinned FloatLib object explicitly
         run: |
           set -euo pipefail
-          pin="$(python3 - <<'PY'
-import json
-with open('lake-manifest.json', encoding='utf-8') as f:
-    manifest = json.load(f)
-for p in manifest['packages']:
-    if p['name'] == 'floatlib':
-        print(p['rev'])
-        break
-else:
-    raise SystemExit('floatlib pin not found')
-PY
-          )"
+          pin="$(python3 -c "import json; print(next(p['rev'] for p in json.load(open('lake-manifest.json'))['packages'] if p['name']=='floatlib'))")"
           mkdir -p .lake/packages/floatlib
           git -C .lake/packages/floatlib init
           git -C .lake/packages/floatlib remote add origin https://github.com/lean-dojo/FloatLib.git
