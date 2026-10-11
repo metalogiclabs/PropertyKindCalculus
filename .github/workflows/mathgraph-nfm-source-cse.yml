@@ -1,0 +1,35 @@
+name: NFM PKC source identity at current upstream pin
+
+on:
+  push:
+    branches:
+      - mathgraph/nfm2027-source-aware-cse-upstream-pin-v1
+  workflow_dispatch:
+
+jobs:
+  scoped-cse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lean toolchain manager
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore pinned Mathlib cache
+        run: lake exe cache get
+
+      - name: Restore PKC build cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .lake/build
+          key: mathgraph-pkc-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}
+
+      - name: Compile the exact PKC tape and bisimulation dependencies
+        run: |
+          lake build PropertyKindCalculus.Torch.Paradigm.TapeCodegen PropertyKindCalculus.Graph.Bisimulation
+
+      - name: Run checked source identity and missing-scope falsifiers
+        run: |
+          lake env lean experiments/nfm2027-source-aware-cse-v1/ScopedCseProbe.lean
