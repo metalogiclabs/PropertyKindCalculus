@@ -69,6 +69,26 @@ run_meta do
   unless (lean.splitOn "Provenance.Relation where").length == 3 do
     throwError "generated module should define 2 relations"
 
+-- What counts as checked evidence: a constructor of a Prop does; an axiom, data, and a missing
+-- name do not. A theorem's proof is not visible from a `module`, so here it is reported as
+-- unverifiable rather than accepted; `scripts/roundtrip-sysml.lean` verifies the real citations
+-- from outside the module system.
+run_meta do
+  let env ← getEnv
+  if let some why ← Harvest.notEvidence env ``PropertyKindCalculus.Iso80000.Part3.Edge.width_length then
+    throwError "a constructor of a Prop is evidence, but: {why}"
+  unless (← Harvest.notEvidence env ``Tutorial.HarmonicOscillator.compliance_bounded).isSome do
+    throwError "a theorem's proof is not visible from a module; it must not pass silently"
+  unless (← Harvest.notEvidence env ``propext).isSome do
+    throwError "an axiom is not evidence"
+  unless (← Harvest.notEvidence env ``Nat.add).isSome do
+    throwError "data is not evidence"
+  unless (← Harvest.notEvidence env `No.Such.Decl).isSome do
+    throwError "a missing declaration is not evidence"
+
+-- Model text cannot end, or nest, the generated comment it lands in.
+#guard EmitLean.commentText "a -/ b /- c\nd" == "a - / b / - c d"
+
 end PropertyKindCalculus.Tests.Interchange
 
 end Blanket

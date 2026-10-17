@@ -33,6 +33,7 @@ package HarmonicOscillatorPKC {
 
     #module oscillator : Module {
         :>> name = "oscillator";
+        :>> hypergraph = true;
         port m : KindPort { :>> node = "m"; :>> kind = mass; :>> dir = PortDir::input; }
         port k : KindPort { :>> node = "k"; :>> kind = stiffness; :>> dir = PortDir::param; }
         port omega2 : KindPort { :>> node = "result"; :>> kind = angularFrequencySquared; :>> dir = PortDir::output; }
