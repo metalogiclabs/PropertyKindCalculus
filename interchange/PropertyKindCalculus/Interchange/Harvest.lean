@@ -541,8 +541,8 @@ def citationsOf (m : PkcModel) : List (String × String) :=
 /-- The axioms a kernel-checked proof may rest on. -/
 def admittedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
 
-/-- Why a declaration is not evidence — or `none` when it is: a theorem, an instance, a
-constructor of a `Prop`, or a `Prop`-typed definition, whose proof rests on no axiom beyond
+/-- Why a declaration is not evidence — or `none` when it is: a theorem, a constructor of a
+`Prop`, or a `Prop`-typed definition or instance, whose proof rests on no axiom beyond
 `admittedAxioms` (so neither an `axiom` itself, nor anything `sorry`ed or `ofReduceBool`ed). -/
 def notEvidence (env : Environment) (n : Name) : MetaM (Option String) := do
   let some ci := env.find? n | return some "is not a declaration of the environment"
@@ -557,8 +557,9 @@ def notEvidence (env : Environment) (n : Name) : MetaM (Option String) := do
     | .ctorInfo _ => do
       if ← Meta.isProp ci.type then pure none else pure (some "constructs data, not a proposition")
     | _ => do
-      if isInstanceCore env n then pure none
-      else if ← Meta.isProp ci.type then pure none
+      -- an instance counts only as any other definition does: by proving a proposition
+      -- (`KindMul`/`KindDiv` are `Prop` classes; `Inhabited`/`DecidableEq` instances are data)
+      if ← Meta.isProp ci.type then pure none
       else pure (some "is data, not evidence (cite it as a source)")
   if let some why := shape then return some why
   let axioms ← collectAxioms n

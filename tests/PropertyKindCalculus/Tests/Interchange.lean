@@ -83,6 +83,8 @@ run_meta do
     throwError "an axiom is not evidence"
   unless (← Harvest.notEvidence env ``Nat.add).isSome do
     throwError "data is not evidence"
+  unless (← Harvest.notEvidence env ``instInhabitedNat).isSome do
+    throwError "a data-valued instance is not evidence"
   unless (← Harvest.notEvidence env `No.Such.Decl).isSome do
     throwError "a missing declaration is not evidence"
 
