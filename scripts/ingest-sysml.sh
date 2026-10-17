@@ -16,11 +16,16 @@ for model in "$@"; do
   "$SYSML" -convert api-json sysml/PKC.sysml "$model" > "$out"
   jsons+=("$out")
 done
-PKC_INGEST="$(IFS=,; echo "${jsons[*]}")" lake env lean scripts/ingest-sysml.lean
-for model in "$@"; do
-  pkg="$(basename "$model" .sysml)"
-  gen="$(ls .lake/build/sysml/Generated/*.lean | grep -i "$(echo "$pkg" | tr -cd '[:alnum:]_')" | head -1 || true)"
+generated=".lake/build/sysml/generated-modules.txt"
+PKC_INGEST="$(IFS=,; echo "${jsons[*]}")" PKC_INGEST_OUT="$generated" lake env lean scripts/ingest-sysml.lean
+count=0
+while IFS= read -r gen; do
   [ -n "$gen" ] || continue
   echo "checking $gen"
   lake env lean "$gen"
-done
+  count=$((count + 1))
+done < "$generated"
+if [ "$count" -ne "${#jsons[@]}" ]; then
+  echo "ingest-sysml: expected ${#jsons[@]} generated module(s), checked $count" >&2
+  exit 1
+fi

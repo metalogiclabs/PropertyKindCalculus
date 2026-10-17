@@ -179,8 +179,12 @@ def kind (p : Printer) (m : PkcModel) (k : Kind) : Printer :=
   let head := s!"#kind {ident k.name}" ++
     (if k.specializes.isEmpty then ""
      else " :> " ++ String.intercalate ", " (k.specializes.map ident))
-  let inherited := k.specializes.any fun g =>
-    (m.kind? g).any fun g => g.dimension == k.dimension
+  -- the reader inherits from the first genus that states a vector; omit only when that
+  -- genus's vector is this kind's
+  let inherited := match k.specializes.findSome? fun g =>
+      (m.kind? g).bind fun g => if g.dimension.isEmpty then none else some g.dimension with
+    | some d => d == k.dimension
+    | none => false
   p.block head fun p =>
     let p := p.line s!":>> id default = {str k.id}; :>> scale default = {scaleLit k.scale};"
     let p := match k.principle with

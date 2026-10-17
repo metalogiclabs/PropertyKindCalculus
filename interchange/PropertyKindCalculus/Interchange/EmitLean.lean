@@ -44,11 +44,11 @@ def optStr : Option String → String
 
 def strList (ss : List String) : String := "[" ++ String.intercalate ", " (ss.map str) ++ "]"
 
-def nameList (ss : List String) : String := "[" ++ String.intercalate ", " (ss.map (s!"`{·}")) ++ "]"
+def nameList (ss : List String) : String := "[" ++ String.intercalate ", " (ss.map ("`" ++ ·)) ++ "]"
 
 /-- A `Lean.Name` literal, `.anonymous` for none. -/
 def nameLit : Option String → String
-  | some s => if s.isEmpty then ".anonymous" else s!"`{s}"
+  | some s => if s.isEmpty then ".anonymous" else "`" ++ s
   | none => ".anonymous"
 
 def natList (ns : List Nat) : String := "[" ++ String.intercalate ", " (ns.map toString) ++ "]"
@@ -68,15 +68,32 @@ def relationCtor : RelationKind → String
 
 def transferCtor (l : License) : String :=
   match l.transfer with
-  | .exact => s!".exact `{l.witness}" | .nonneg => s!".nonneg `{l.witness}"
-  | .restated => s!".restated `{l.witness}"
+  | .exact => ".exact `" ++ l.witness | .nonneg => ".nonneg `" ++ l.witness
+  | .restated => ".restated `" ++ l.witness
 
 def requirementCtor : RequirementKind → String
   | .provable => ".provable" | .empirical => ".empirical"
 
+/-- The `RequirementScope` a pivot scope string denotes (the harvester's rendering:
+`sort N`, `objects A, B`, `decided D`); absent or unrecognized is `.all`. -/
+def scopeCtor : Option String → String
+  | some s =>
+    if s.startsWith "sort " then ".sort " ++ nameLit (some (s.drop 5).toString)
+    else if s.startsWith "decided " then ".decided " ++ nameLit (some (s.drop 8).toString)
+    else if s.startsWith "objects " then
+      ".objects " ++ nameList ((s.drop 8).toString.splitOn ", ")
+    else ".all"
+  | none => ".all"
+
+/-- Text destined for a comment: one line, with no comment terminator in it — a model is
+input, not code, and must not be able to end its comment and start a command. -/
+def commentText (s : String) : String :=
+  (s.map fun c => if c == '\n' || c == '\r' then ' ' else c).replace "-/" "- /"
+
 def citationComment (source : Option String) (checked : List Checked) : List String :=
-  (source.map fun s => s!"-- source: {s}").toList
-    ++ checked.map fun c => s!"-- checked: {c.decl}" ++ (c.statement.map (s!" — {·}")).getD ""
+  (source.map fun s => s!"-- source: {commentText s}").toList
+    ++ checked.map fun c =>
+      s!"-- checked: {commentText c.decl}" ++ (c.statement.map (s!" — {commentText ·}")).getD ""
 
 /-- The module's principle definitions. -/
 def principles (m : PkcModel) : List String :=
@@ -95,7 +112,7 @@ def kinds (m : PkcModel) : List String :=
                   some ("dimension: " ++ String.intercalate " · " (k.dimension.map fun d =>
                     s!"{d.base}^{if d.den == 1 then toString d.num else s!"({d.num}/{d.den})"}"))].filterMap id
     citationComment k.source k.checked ++
-    (if doc.isEmpty then [] else [s!"/-- {String.intercalate "; " doc} -/"]) ++
+    (if doc.isEmpty then [] else [s!"/-- {commentText (String.intercalate "; " doc)} -/"]) ++
     [s!"def {ident k.name} : KindOfProperty :=",
      s!"  \{ id := {str k.id}, scale := {scaleCtor k.scale}, examPrinciple := {optStr principleId} }", ""]
 
@@ -120,7 +137,7 @@ def algebra (m : PkcModel) : List String :=
     | .quotient, true, 3 => [s!"instance : KindDiv {args} := ⟨QuotientKind.ofRatio {args}⟩"]
     | .product, false, 3 => [s!"theorem {ident e.name} : ProductKind {args} := ProductKind.ofRatio {args}"]
     | .quotient, false, 3 => [s!"theorem {ident e.name} : QuotientKind {args} := QuotientKind.ofRatio {args}"]
-    | k, _, _ => [s!"-- {repr k} edge {e.name}: {args} (witness required; not generated)"]) ++ [""]
+    | k, _, _ => [commentText s!"-- {repr k} edge {e.name}: {args} (witness required; not generated)"]) ++ [""]
 
 def dedicated (m : PkcModel) : List String :=
   m.dedicated.flatMap fun d =>
@@ -133,19 +150,61 @@ def units (m : PkcModel) : List String :=
     citationComment u.source [] ++
     [s!"def {ident u.name} : MetrologicalUnit := \{ kind := {ident u.kind}, symbol := {str u.symbol} }", ""]
 
-/-- The boundaries, over `String` nodes and kind names — the declared signature as data. -/
+def tierCtor (i : Intro) : String :=
+  match i.tier with
+  | .derived => ".derived" | .gated => ".gated"
+  | .attested => s!".attested {str (i.reason.getD "")}"
+
+def aggregationCtor (a : Aggregation) : String :=
+  let w := nameLit a.witness
+  match a.cls with
+  | .extensive => ".extensive" | .intensive => ".intensive" | .wholeProper => ".wholeProper"
+  | .quasiExtensive => s!"(.quasiExtensive {w})" | .conditionallyExtensive => s!"(.conditionallyExtensive {w})"
+  | .countKeyed => s!"(.countKeyed {w})" | .extensiveAbout => s!"(.extensiveAbout {w})"
+  | .interfaceLicensed => s!"(.interfaceLicensed {w})"
+
+def familyCtor (o : Occurrence) : String :=
+  match o.family with
+  | .product => ".product" | .quotient => ".quotient" | .reciprocal => ".reciprocal"
+  | .transcendental => ".transcendental" | .reference => ".reference" | .additive => ".additive"
+  | .tableMul => ".tableMul" | .tableDiv => ".tableDiv" | .copy => ".copy"
+  | .power => s!"(.power (({o.powerNum.getD 1} : Rat) / {o.powerDen.getD 1}))"
+  | .step => s!"(.step {nameLit o.member} {match o.inst with | some i => s!"(some {i})" | none => "none"} {o.arity.getD 0})"
+  | .select => s!"(.select {o.arity.getD 0})"
+
+/-- The boundaries, over `String` nodes and kind names — the declared signature as data —
+each with the provenance hypergraph the model states for it and the two verdicts the
+calculus gives such a pair: the graph holds together (`wellFormed`) and it is the graph
+of that boundary (`agrees`), both decided by the kernel. -/
 def modules (m : PkcModel) : List String :=
   m.modules.flatMap fun b =>
     let ports := b.ports.map fun p => s!"⟨{str p.node}, {str p.kind}, {dirCtor p.dir}⟩"
+    let intros := b.intros.map fun i => s!"⟨{str i.node}, {str i.kind}, {tierCtor i}⟩"
+    let occs := b.occurrences.map fun o =>
+      s!"\{ family := {familyCtor o}, operands := [{String.intercalate ", " (o.operands.map fun x => s!"({str x.node}, {str x.kind})")}], " ++
+      s!"result := {str o.result}, resultKind := {str o.resultKind}, site := {str o.site}, op := {nameLit o.op} }"
+    let name := ident b.name
     citationComment b.source b.checked ++
-    [s!"def {ident b.name} : Provenance.Contract String String where",
+    [s!"def {name} : Provenance.Contract String String where",
      s!"  name := {str b.title}",
      s!"  members := {nameList b.members}",
      s!"  ports := [{String.intercalate ", " ports}]",
      s!"  exits := {strList b.exits}",
-     s!"  deciders := [{String.intercalate ", " (b.deciders.map fun (n, d) => s!"({str n}, `{d})")}]",
-     s!"  suppliers := [{String.intercalate ", " (b.suppliers.map fun (n, d) => s!"({str n}, `{d})")}]",
-     s!"  role := {roleCtor b.role}", ""]
+     s!"  deciders := [{String.intercalate ", " (b.deciders.map fun (n, d) => s!"({str n}, " ++ "`" ++ d ++ ")")}]",
+     s!"  aggregations := [{String.intercalate ", " (b.aggregations.map fun a => s!"({str a.node}, {aggregationCtor a})")}]",
+     s!"  suppliers := [{String.intercalate ", " (b.suppliers.map fun (n, d) => s!"({str n}, " ++ "`" ++ d ++ ")")}]",
+     s!"  role := {roleCtor b.role}", ""] ++
+    (if b.intros.isEmpty && b.occurrences.isEmpty then
+      [s!"-- `{name}` states no hypergraph (no intros, no occurrences): no wiring verdict is generated.", ""]
+     else
+      [s!"/-- The provenance hypergraph the model states for `{name}`. -/",
+       s!"def {name}_graph : Provenance String String where",
+       s!"  ports := [{String.intercalate ", " ports}]",
+       s!"  intros := [{String.intercalate ", " intros}]",
+       s!"  occurrences := [{String.intercalate ",\n    " occs}]",
+       s!"  exits := {strList b.exits}", "",
+       s!"example : ({name}_graph).wellFormed = true := by decide",
+       s!"example : ({name}).agrees {name}_graph = true := by decide", ""])
 
 def relations (m : PkcModel) : List String :=
   m.relations.flatMap fun r =>
@@ -161,9 +220,11 @@ def relations (m : PkcModel) : List String :=
 def requirements (m : PkcModel) : List String :=
   m.requirements.flatMap fun r =>
     citationComment r.source [] ++
+    (r.port.map fun p => s!"-- port: {commentText p} (a rendered NodeId; not rebuilt)").toList ++
     [s!"def {ident r.name} : Provenance.Requirement where",
      s!"  name := {str r.title}", s!"  statement := {str r.statement}",
      s!"  kind := {requirementCtor r.kind}", s!"  governs := {nameLit (some r.governs)}",
+     s!"  scope := {scopeCtor r.scope}",
      s!"  witness := {nameLit r.witness}", s!"  spotChecks := {nameList r.spotChecks}",
      s!"  absent := {nameLit r.absent}", s!"  referents := {nameList r.referents}", ""]
 
@@ -178,11 +239,16 @@ def tapes (m : PkcModel) : List String :=
 def tapeMatches (m : PkcModel) : List String :=
   m.tapeMatches.flatMap fun x =>
     citationComment x.source x.checked ++
-    [s!"/-- match {x.name}: module `{x.moduleName}` realized on tape `{x.tape}`" ++
-       (x.carrier.map fun c => s!" at rung {c.rung}" ++ (c.platform.map (s!" on {·}")).getD "").getD "" ++ " -/",
+    [commentText (s!"/-- match {x.name}: module `{x.moduleName}` realized on tape `{x.tape}`" ++
+       (x.carrier.map fun c => s!" at rung {c.rung}" ++ (c.platform.map (s!" on {·}")).getD "").getD "") ++ " -/",
      s!"def {ident x.name} : Paradigm.Match String :=",
      s!"  \{ components := [{String.intercalate ", " (x.components.map fun c => s!"({str c.node}, {natList c.vertices})")}],",
-     s!"    realized := [{String.intercalate ", " (x.realized.map fun r => s!"⟨{r.occ}, {natList r.interior}⟩")}] }", ""]
+     s!"    realized := [{String.intercalate ", " (x.realized.map fun r => s!"⟨{r.occ}, {natList r.interior}⟩")}] }",
+     (match m.modules.find? (·.name == x.moduleName) with
+      | some b => if b.intros.isEmpty && b.occurrences.isEmpty
+          then s!"-- `{ident x.moduleName}` states no hypergraph: no acceptance verdict for this match."
+          else s!"example : ({ident x.name}).accepts {ident x.moduleName}_graph {ident x.tape} = true := by decide"
+      | none => s!"-- module `{ident x.moduleName}` is not in this model: no acceptance verdict for this match."), ""]
 
 /-- The whole module. `moduleName` is the Lean module the text is written as. -/
 def emit (m : PkcModel) (moduleName : String := s!"Generated.{ident m.packageName}") : String :=
