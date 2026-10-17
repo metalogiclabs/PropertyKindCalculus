@@ -150,19 +150,61 @@ def units (m : PkcModel) : List String :=
     citationComment u.source [] ++
     [s!"def {ident u.name} : MetrologicalUnit := \{ kind := {ident u.kind}, symbol := {str u.symbol} }", ""]
 
-/-- The boundaries, over `String` nodes and kind names — the declared signature as data. -/
+def tierCtor (i : Intro) : String :=
+  match i.tier with
+  | .derived => ".derived" | .gated => ".gated"
+  | .attested => s!".attested {str (i.reason.getD "")}"
+
+def aggregationCtor (a : Aggregation) : String :=
+  let w := nameLit a.witness
+  match a.cls with
+  | .extensive => ".extensive" | .intensive => ".intensive" | .wholeProper => ".wholeProper"
+  | .quasiExtensive => s!"(.quasiExtensive {w})" | .conditionallyExtensive => s!"(.conditionallyExtensive {w})"
+  | .countKeyed => s!"(.countKeyed {w})" | .extensiveAbout => s!"(.extensiveAbout {w})"
+  | .interfaceLicensed => s!"(.interfaceLicensed {w})"
+
+def familyCtor (o : Occurrence) : String :=
+  match o.family with
+  | .product => ".product" | .quotient => ".quotient" | .reciprocal => ".reciprocal"
+  | .transcendental => ".transcendental" | .reference => ".reference" | .additive => ".additive"
+  | .tableMul => ".tableMul" | .tableDiv => ".tableDiv" | .copy => ".copy"
+  | .power => s!"(.power (({o.powerNum.getD 1} : Rat) / {o.powerDen.getD 1}))"
+  | .step => s!"(.step {nameLit o.member} {match o.inst with | some i => s!"(some {i})" | none => "none"} {o.arity.getD 0})"
+  | .select => s!"(.select {o.arity.getD 0})"
+
+/-- The boundaries, over `String` nodes and kind names — the declared signature as data —
+each with the provenance hypergraph the model states for it and the two verdicts the
+calculus gives such a pair: the graph holds together (`wellFormed`) and it is the graph
+of that boundary (`agrees`), both decided by the kernel. -/
 def modules (m : PkcModel) : List String :=
   m.modules.flatMap fun b =>
     let ports := b.ports.map fun p => s!"⟨{str p.node}, {str p.kind}, {dirCtor p.dir}⟩"
+    let intros := b.intros.map fun i => s!"⟨{str i.node}, {str i.kind}, {tierCtor i}⟩"
+    let occs := b.occurrences.map fun o =>
+      s!"\{ family := {familyCtor o}, operands := [{String.intercalate ", " (o.operands.map fun x => s!"({str x.node}, {str x.kind})")}], " ++
+      s!"result := {str o.result}, resultKind := {str o.resultKind}, site := {str o.site}, op := {nameLit o.op} }"
+    let name := ident b.name
     citationComment b.source b.checked ++
-    [s!"def {ident b.name} : Provenance.Contract String String where",
+    [s!"def {name} : Provenance.Contract String String where",
      s!"  name := {str b.title}",
      s!"  members := {nameList b.members}",
      s!"  ports := [{String.intercalate ", " ports}]",
      s!"  exits := {strList b.exits}",
      s!"  deciders := [{String.intercalate ", " (b.deciders.map fun (n, d) => s!"({str n}, " ++ "`" ++ d ++ ")")}]",
+     s!"  aggregations := [{String.intercalate ", " (b.aggregations.map fun a => s!"({str a.node}, {aggregationCtor a})")}]",
      s!"  suppliers := [{String.intercalate ", " (b.suppliers.map fun (n, d) => s!"({str n}, " ++ "`" ++ d ++ ")")}]",
-     s!"  role := {roleCtor b.role}", ""]
+     s!"  role := {roleCtor b.role}", ""] ++
+    (if b.intros.isEmpty && b.occurrences.isEmpty then
+      [s!"-- `{name}` states no hypergraph (no intros, no occurrences): no wiring verdict is generated.", ""]
+     else
+      [s!"/-- The provenance hypergraph the model states for `{name}`. -/",
+       s!"def {name}_graph : Provenance String String where",
+       s!"  ports := [{String.intercalate ", " ports}]",
+       s!"  intros := [{String.intercalate ", " intros}]",
+       s!"  occurrences := [{String.intercalate ",\n    " occs}]",
+       s!"  exits := {strList b.exits}", "",
+       s!"example : ({name}_graph).wellFormed = true := by decide",
+       s!"example : ({name}).agrees {name}_graph = true := by decide", ""])
 
 def relations (m : PkcModel) : List String :=
   m.relations.flatMap fun r =>
@@ -201,7 +243,12 @@ def tapeMatches (m : PkcModel) : List String :=
        (x.carrier.map fun c => s!" at rung {c.rung}" ++ (c.platform.map (s!" on {·}")).getD "").getD "") ++ " -/",
      s!"def {ident x.name} : Paradigm.Match String :=",
      s!"  \{ components := [{String.intercalate ", " (x.components.map fun c => s!"({str c.node}, {natList c.vertices})")}],",
-     s!"    realized := [{String.intercalate ", " (x.realized.map fun r => s!"⟨{r.occ}, {natList r.interior}⟩")}] }", ""]
+     s!"    realized := [{String.intercalate ", " (x.realized.map fun r => s!"⟨{r.occ}, {natList r.interior}⟩")}] }",
+     (match m.modules.find? (·.name == x.moduleName) with
+      | some b => if b.intros.isEmpty && b.occurrences.isEmpty
+          then s!"-- `{ident x.moduleName}` states no hypergraph: no acceptance verdict for this match."
+          else s!"example : ({ident x.name}).accepts {ident x.moduleName}_graph {ident x.tape} = true := by decide"
+      | none => s!"-- module `{ident x.moduleName}` is not in this model: no acceptance verdict for this match."), ""]
 
 /-- The whole module. `moduleName` is the Lean module the text is written as. -/
 def emit (m : PkcModel) (moduleName : String := s!"Generated.{ident m.packageName}") : String :=
