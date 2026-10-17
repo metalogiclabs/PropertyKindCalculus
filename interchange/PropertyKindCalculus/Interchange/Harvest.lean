@@ -216,8 +216,7 @@ def harvestKinds (consts : Array Name) : HarvestM Unit := do
           if k.name != name then k else
             { k with dimension := if k.dimension.isEmpty then data.dimension else k.dimension,
                      standardRef := data.standardRef, catalogueItem := data.catalogueItem,
-                     symbol := data.symbol, coherentUnit := data.coherentUnit,
-                     checked := k.checked ++ [{ decl := toString c }] } }
+                     symbol := data.symbol, coherentUnit := data.coherentUnit } }
         continue
       | none => pure ()
     let name := elementName taken c
@@ -247,10 +246,21 @@ def harvestPrinciples (consts : Array Name) : HarvestM Unit := do
     byId := byId.insertIfNew id name
     modifyModel fun m => { m with principles := m.principles ++
       [{ name, id, source := some (toString c) }] }
-  modifyModel fun m => { m with kinds := m.kinds.map fun k =>
-    match k.principle with
-    | some id => { k with principle := byId[id]? }
-    | none => k }
+  -- a kind whose principle is declared outside the scope keeps it: the id becomes a
+  -- principle element of its own (named after the id), cited to no declaration
+  let mut extra : List Principle := []
+  for k in (← get).model.kinds do
+    if let some id := k.principle then
+      unless byId.contains id do
+        let name := id.map fun c => if c.isAlphanum then c else '_'
+        extra := extra ++ [{ name := name, id := id }]
+        byId := byId.insert id name
+  modifyModel fun m => { m with
+    principles := m.principles ++ extra,
+    kinds := m.kinds.map fun k =>
+      match k.principle with
+      | some id => { k with principle := byId[id]? }
+      | none => k }
 
 /-- Harvest the dedicated kinds and units. -/
 def harvestDedicatedAndUnits (consts : Array Name) : HarvestM Unit := do
@@ -501,32 +511,56 @@ def harvestTapes (consts : Array Name) : HarvestM Unit := do
 
 /-! ## Citations -/
 
-/-- Every declaration a model cites — as `source` or `checked` — with the element citing it. -/
+/-- Every `source` citation of a model, with the element citing it. -/
+def sourcesOf (m : PkcModel) : List (String × String) :=
+  (m.principles.filterMap fun p => p.source.map (p.name, ·))
+    ++ (m.kinds.filterMap fun k => k.source.map (k.name, ·))
+    ++ (m.edges.filterMap fun e => e.source.map (e.name, ·))
+    ++ (m.dedicated.filterMap fun d => d.source.map (d.name, ·))
+    ++ (m.units.filterMap fun u => u.source.map (u.name, ·))
+    ++ (m.modules.filterMap fun b => b.source.map (b.name, ·))
+    ++ (m.relations.filterMap fun r => r.source.map (r.name, ·))
+    ++ (m.requirements.filterMap fun r => r.source.map (r.name, ·))
+    ++ (m.tapes.filterMap fun t => t.source.map (t.name, ·))
+    ++ (m.tapeMatches.filterMap fun x => x.source.map (x.name, ·))
+
+/-- Every `checked` citation of a model, with the element citing it. -/
+def checkedOf (m : PkcModel) : List (String × Checked) :=
+  (m.kinds.flatMap fun k => k.checked.map (k.name, ·))
+    ++ (m.edges.flatMap fun e => e.checked.map (e.name, ·))
+    ++ (m.modules.flatMap fun b => b.checked.map (b.name, ·))
+    ++ (m.tapes.flatMap fun t => t.checked.map (t.name, ·))
+    ++ (m.tapeMatches.flatMap fun x => x.checked.map (x.name, ·))
+
+/-- Every declaration a model cites, as `source` or `checked`, with the element citing it. -/
 def citationsOf (m : PkcModel) : List (String × String) :=
-  let one (name : String) (source : Option String) (checked : List Checked) : List (String × String) :=
-    (source.map (name, ·)).toList ++ checked.map (name, ·.decl)
-  m.principles.flatMap (fun p => one p.name p.source [])
-    ++ m.kinds.flatMap (fun k => one k.name k.source k.checked)
-    ++ m.edges.flatMap (fun e => one e.name e.source e.checked)
-    ++ m.dedicated.flatMap (fun d => one d.name d.source [])
-    ++ m.units.flatMap (fun u => one u.name u.source [])
-    ++ m.modules.flatMap (fun b => one b.name b.source b.checked)
-    ++ m.relations.flatMap (fun r => one r.name r.source [])
-    ++ m.requirements.flatMap (fun r => one r.name r.source [])
-    ++ m.tapes.flatMap (fun t => one t.name t.source t.checked)
-    ++ m.tapeMatches.flatMap (fun x => one x.name x.source x.checked)
+  sourcesOf m ++ (checkedOf m).map fun (n, c) => (n, c.decl)
+
+/-- Is the declaration evidence — a theorem, an instance, a constructor, or a `Prop`-typed
+definition — rather than data? -/
+def isEvidence (env : Environment) (n : Name) : MetaM Bool := do
+  match env.find? n with
+  | some (.thmInfo _) | some (.ctorInfo _) => return true
+  | some ci =>
+    if isInstanceCore env n then return true
+    return (← Meta.isProp ci.type)
+  | none => return false
 
 /-- The citations the environment cannot honour: declarations it does not contain, and
-`checked` citations of declarations that are not theorems or instances (a citation of a
-definition is a `source`, not evidence). -/
+`checked` citations of declarations that are not evidence (a theorem, an instance, a
+constructor, a `Prop`-typed definition) — a citation of data is a `source`, not a check. -/
 def unverifiedCitations (m : PkcModel) : MetaM (List String) := do
   let env ← getEnv
   let mut out : List String := []
-  for (elem, decl) in citationsOf m do
-    let n := decl.toName
-    match env.find? n with
-    | none => out := out ++ [s!"{elem}: cites '{decl}', which the environment does not contain"]
-    | some _ => pure ()
+  for (elem, decl) in sourcesOf m do
+    unless env.contains decl.toName do
+      out := out ++ [s!"{elem}: source '{decl}' is not a declaration of the environment"]
+  for (elem, c) in checkedOf m do
+    let n := c.decl.toName
+    if !env.contains n then
+      out := out ++ [s!"{elem}: cites '{c.decl}', which the environment does not contain"]
+    else if !(← isEvidence env n) then
+      out := out ++ [s!"{elem}: '{c.decl}' is data, not evidence (cite it as a source)"]
   return out
 
 /-! ## Entry point -/
