@@ -430,7 +430,9 @@ def readModule (d : Doc) (e : Element) : ReadM MetrologyModule := do
   return { name, title := (strField b "name").getD name, members := strsField b "members", ports,
            exits := strsField b "exits", deciders := (strsField b "deciders").map pair, aggregations,
            suppliers := (strsField b "suppliers").map pair,
-           role := ((strField b "role") >>= roleOf).getD .model, intros, occurrences, source, checked }
+           role := ((strField b "role") >>= roleOf).getD .model,
+           hypergraph := (b.lookup "hypergraph" >>= asBool).getD false || !intros.isEmpty || !occurrences.isEmpty,
+           intros, occurrences, source, checked }
 
 def readRelation (d : Doc) (e : Element) : ReadM Relation := do
   let name := e.name.getD e.id
@@ -499,8 +501,12 @@ def inheritFromGenus (m : PkcModel) (unscaled : List String) : Except String Pkc
   let step (ks : List Kind) (open_ : List String) : List Kind × List String :=
     ks.foldl (init := ([], open_)) fun (acc, open_) k =>
       let genus := k.specializes.findSome? fun g => ks.find? (·.name == g)
+      -- the vector comes from the first genus that states one (the emitter omits a species'
+      -- vector exactly when that genus's is the same)
+      let dimGenus := k.specializes.findSome? fun g =>
+        ks.find? fun x => x.name == g && !x.dimension.isEmpty
       let k := if !k.dimension.isEmpty then k else
-        match genus with
+        match dimGenus with
         | some g => { k with dimension := g.dimension }
         | none => k
       let (k, open_) := if !open_.contains k.name then (k, open_) else

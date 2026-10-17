@@ -220,6 +220,10 @@ structure MetrologyModule where
   aggregations : List Aggregation := []
   suppliers : List (String × String) := []
   role : BoundaryRole := .model
+  /-- The model states this module's hypergraph — `intros` and `occurrences` are its wiring,
+  not an absence of data — and asks for the wiring verdicts (`wellFormed`, `agrees`, and
+  `accepts` for a match against it). A contract whose wiring is not stated is data only. -/
+  hypergraph : Bool := false
   intros : List Intro := []
   occurrences : List Occurrence := []
   source : Option String := none

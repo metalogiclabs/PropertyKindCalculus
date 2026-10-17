@@ -85,10 +85,11 @@ def scopeCtor : Option String → String
     else ".all"
   | none => ".all"
 
-/-- Text destined for a comment: one line, with no comment terminator in it — a model is
-input, not code, and must not be able to end its comment and start a command. -/
+/-- Text destined for a comment: one line, with neither a comment terminator nor a nested
+comment opener in it — a model is input, not code, and must not be able to end its comment
+and start a command. -/
 def commentText (s : String) : String :=
-  (s.map fun c => if c == '\n' || c == '\r' then ' ' else c).replace "-/" "- /"
+  ((s.map fun c => if c == '\n' || c == '\r' then ' ' else c).replace "-/" "- /").replace "/-" "/ -"
 
 def citationComment (source : Option String) (checked : List Checked) : List String :=
   (source.map fun s => s!"-- source: {commentText s}").toList
@@ -194,8 +195,8 @@ def modules (m : PkcModel) : List String :=
      s!"  aggregations := [{String.intercalate ", " (b.aggregations.map fun a => s!"({str a.node}, {aggregationCtor a})")}]",
      s!"  suppliers := [{String.intercalate ", " (b.suppliers.map fun (n, d) => s!"({str n}, " ++ "`" ++ d ++ ")")}]",
      s!"  role := {roleCtor b.role}", ""] ++
-    (if b.intros.isEmpty && b.occurrences.isEmpty then
-      [s!"-- `{name}` states no hypergraph (no intros, no occurrences): no wiring verdict is generated.", ""]
+    (if !b.hypergraph then
+      [s!"-- `{name}` states no hypergraph (`hypergraph = false`): a contract only, no wiring verdict.", ""]
      else
       [s!"/-- The provenance hypergraph the model states for `{name}`. -/",
        s!"def {name}_graph : Provenance String String where",
@@ -239,13 +240,13 @@ def tapes (m : PkcModel) : List String :=
 def tapeMatches (m : PkcModel) : List String :=
   m.tapeMatches.flatMap fun x =>
     citationComment x.source x.checked ++
-    [commentText (s!"/-- match {x.name}: module `{x.moduleName}` realized on tape `{x.tape}`" ++
+    ["/-- " ++ commentText (s!"match {x.name}: module `{x.moduleName}` realized on tape `{x.tape}`" ++
        (x.carrier.map fun c => s!" at rung {c.rung}" ++ (c.platform.map (s!" on {·}")).getD "").getD "") ++ " -/",
      s!"def {ident x.name} : Paradigm.Match String :=",
      s!"  \{ components := [{String.intercalate ", " (x.components.map fun c => s!"({str c.node}, {natList c.vertices})")}],",
      s!"    realized := [{String.intercalate ", " (x.realized.map fun r => s!"⟨{r.occ}, {natList r.interior}⟩")}] }",
      (match m.modules.find? (·.name == x.moduleName) with
-      | some b => if b.intros.isEmpty && b.occurrences.isEmpty
+      | some b => if !b.hypergraph
           then s!"-- `{ident x.moduleName}` states no hypergraph: no acceptance verdict for this match."
           else s!"example : ({ident x.name}).accepts {ident x.moduleName}_graph {ident x.tape} = true := by decide"
       | none => s!"-- module `{ident x.moduleName}` is not in this model: no acceptance verdict for this match."), ""]

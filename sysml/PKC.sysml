@@ -250,6 +250,10 @@ package PKC {
             attribute aggregations : Aggregation[*] ordered;
             attribute suppliers : String[*] ordered;
             attribute role : BoundaryRole default BoundaryRole::model;
+            doc /* `hypergraph = true` states that `intros` and `occurrences` are this
+                 * module's wiring and asks Lean for its wiring verdicts (`wellFormed`,
+                 * `agrees`, `accepts` for a match); a module without it is a contract only. */
+            attribute hypergraph : Boolean default false;
             attribute intros : Intro[*] ordered;
             attribute occurrences : Occurrence[*] ordered;
         }

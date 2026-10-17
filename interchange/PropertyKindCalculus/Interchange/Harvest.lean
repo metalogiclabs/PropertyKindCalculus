@@ -460,7 +460,9 @@ def harvestModules (consts : Array Name) : HarvestM Unit := do
         deciders := k.deciders.map fun (n, d) => (n.render, toString d),
         aggregations := k.aggregations.map fun (n, a) => Aggregation.ofClass n.render a,
         suppliers := k.suppliers.map fun (n, d) => (n.render, toString d),
-        role := BoundaryRole.ofProvenance k.role, intros, occurrences,
+        role := BoundaryRole.ofProvenance k.role,
+        -- the assembly read wiring for at least one member: the hypergraph is stated
+        hypergraph := !(intros.isEmpty && occurrences.isEmpty), intros, occurrences,
         source := some (toString c) }
     modifyModel fun m' => { m' with modules := m'.modules ++ [m] }
 
@@ -536,19 +538,37 @@ def checkedOf (m : PkcModel) : List (String × Checked) :=
 def citationsOf (m : PkcModel) : List (String × String) :=
   sourcesOf m ++ (checkedOf m).map fun (n, c) => (n, c.decl)
 
-/-- Is the declaration evidence — a theorem, an instance, a constructor, or a `Prop`-typed
-definition — rather than data? -/
-def isEvidence (env : Environment) (n : Name) : MetaM Bool := do
-  match env.find? n with
-  | some (.thmInfo _) | some (.ctorInfo _) => return true
-  | some ci =>
-    if isInstanceCore env n then return true
-    return (← Meta.isProp ci.type)
-  | none => return false
+/-- The axioms a kernel-checked proof may rest on. -/
+def admittedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
 
-/-- The citations the environment cannot honour: declarations it does not contain, and
-`checked` citations of declarations that are not evidence (a theorem, an instance, a
-constructor, a `Prop`-typed definition) — a citation of data is a `source`, not a check. -/
+/-- Why a declaration is not evidence — or `none` when it is: a theorem, an instance, a
+constructor of a `Prop`, or a `Prop`-typed definition, whose proof rests on no axiom beyond
+`admittedAxioms` (so neither an `axiom` itself, nor anything `sorry`ed or `ofReduceBool`ed). -/
+def notEvidence (env : Environment) (n : Name) : MetaM (Option String) := do
+  let some ci := env.find? n | return some "is not a declaration of the environment"
+  let shape ← match ci with
+    | .axiomInfo _ =>
+      -- a `module` sees every imported theorem as an axiom (proofs are not imported); the
+      -- scripts run outside the module system, where a theorem is a theorem
+      if env.header.isModule then
+        pure (some "is an axiom or a theorem whose proof this module cannot see; verify from a script")
+      else pure (some "is an axiom, not a proof")
+    | .thmInfo _ => pure none
+    | .ctorInfo _ => do
+      if ← Meta.isProp ci.type then pure none else pure (some "constructs data, not a proposition")
+    | _ => do
+      if isInstanceCore env n then pure none
+      else if ← Meta.isProp ci.type then pure none
+      else pure (some "is data, not evidence (cite it as a source)")
+  if let some why := shape then return some why
+  let axioms ← collectAxioms n
+  let foreign := axioms.filter (!admittedAxioms.contains ·)
+  if foreign.isEmpty then return none
+  return some s!"rests on {foreign.toList} — not a kernel-checked proof"
+
+/-- The citations the environment cannot honour: sources it does not contain, and `checked`
+citations that are not evidence (see `notEvidence`) — a citation of data is a `source`, not a
+check, and an axiom or a `sorry` is not a proof. -/
 def unverifiedCitations (m : PkcModel) : MetaM (List String) := do
   let env ← getEnv
   let mut out : List String := []
@@ -557,10 +577,8 @@ def unverifiedCitations (m : PkcModel) : MetaM (List String) := do
       out := out ++ [s!"{elem}: source '{decl}' is not a declaration of the environment"]
   for (elem, c) in checkedOf m do
     let n := c.decl.toName
-    if !env.contains n then
-      out := out ++ [s!"{elem}: cites '{c.decl}', which the environment does not contain"]
-    else if !(← isEvidence env n) then
-      out := out ++ [s!"{elem}: '{c.decl}' is data, not evidence (cite it as a source)"]
+    if let some why ← notEvidence env n then
+      out := out ++ [s!"{elem}: '{c.decl}' {why}"]
   return out
 
 /-! ## Entry point -/

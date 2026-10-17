@@ -249,6 +249,7 @@ def module (p : Printer) (m : MetrologyModule) : Printer :=
       (p.line s!"attribute agg{j} :> aggregations \{ :>> node = {str a.node}; :>> class = {aggregationLit a.cls};{w} }", j + 1)) |>.1
     let p := listBind p "suppliers" false (m.suppliers.map fun (n, d) => s!"{n} := {d}")
     let p := if m.role == .model then p else p.line s!":>> role = {roleLit m.role};"
+    let p := if m.hypergraph then p.line ":>> hypergraph = true;" else p
     let p := m.intros.foldl (init := (p, 0)) (fun (p, j) i =>
       let r := match i.reason with | some r => s!" :>> reason = {str r};" | none => ""
       (p.line s!"attribute intro{j} :> intros \{ :>> node = {str i.node}; :>> kind = {ident i.kind}; :>> tier = {tierLit i.tier};{r} }", j + 1)) |>.1
