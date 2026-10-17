@@ -112,6 +112,18 @@ lives in a **separate downstream repository** that `require`s this package — a
 application of the calculus, kept out of PKC so the package stays focused on
 metrology and the ISO/IEC 80000 parts.
 
+## SysML v2 interchange
+
+`sysml/PKC.sysml` is the calculus as a SysML v2 language extension — `#kind width :> length`,
+`#product`, `#module` with kind-typed ports and a provenance hypergraph, `#tape`/`#match` for
+the computational tape graph — built on SysML's semantic metadata rather than its Quantities
+and Units library. The `Interchange` library (`interchange/`) carries the neutral `PkcModel`
+with its JSON form, a harvester that reads a PKC model out of the Lean environment, an emitter
+into the DSL, a reader of OpenSysML's API element form, and an emitter of a Lean module the
+kernel re-checks; `scripts/emit-sysml.lean`, `scripts/ingest-sysml.sh` and
+`scripts/roundtrip-sysml.sh` run the two directions and the round trip. See
+[`sysml/README.md`](sysml/README.md).
+
 ## Design blueprint
 
 A [Verso](https://github.com/leanprover/verso) /

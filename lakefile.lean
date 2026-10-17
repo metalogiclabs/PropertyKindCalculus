@@ -302,6 +302,19 @@ lean_lib «Iso80000» where
   srcDir := "iso80000"
   globs := #[.andSubmodules `PropertyKindCalculus.Iso80000]
 
+/-- The **SysML v2 interchange** layer, in its own source tree (`interchange/`): the neutral
+`PkcModel` record with its JSON form, the `MetaM` harvester that reads a PKC model out of
+the environment, the emitter that writes it in the PKC DSL (`sysml/PKC.sysml`), the reader
+of OpenSysML's API element form, and the emitter of a Lean module the kernel re-checks.
+Imports the ISO 80000 catalogue (and so the dimension layer) to harvest the catalogued
+kinds, and the core for `Provenance`, `Requirement` and `TapeGraph`. Build with
+`lake build Interchange`. -/
+lean_lib «Interchange» where
+  srcDir := "interchange"
+  -- `roots` is explicit because the doc build renders `lib.rootModules` (see the NOTE above).
+  roots := #[`PropertyKindCalculus.Interchange]
+  globs := #[.andSubmodules `PropertyKindCalculus.Interchange]
+
 /-- The **external cross-reference** layer: typed, decl-indexed annotations that
 map this work's declarations to the loci where the corresponding concepts are
 defined in Dybkær's *Ontology on Property* (2009) and the VIM 4 2CD (2023-07-31).
