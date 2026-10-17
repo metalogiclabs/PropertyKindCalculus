@@ -88,8 +88,11 @@ Lean environment ──Harvest──▶ PkcModel ──EmitSysml──▶ Model.
   element list, writes `.lake/build/sysml/Generated/<Package>.lean` — `KindOfProperty`
   definitions, an `Edge` inductive, `KindMul`/`KindDiv` instances and `ProductKind`/`QuotientKind`
   theorems (discharged by the calculus's smart constructors, so the ratio-scale gate is checked),
-  `Provenance.Contract`/`Relation`/`Requirement` values, tapes with their build order decided —
-  and has the kernel check it. Citations the environment cannot honour are reported.
+  `Provenance.Contract`/`Relation`/`Requirement` values, tapes with their build order decided,
+  and for a module that states its hypergraph the `Provenance` graph with `wellFormed` and
+  `Contract.agrees` decided, plus `Match.accepts` for each match against it — and has the
+  kernel check it. A citation the environment cannot honour (a missing declaration, or data
+  cited as `@Checked`) fails the ingest.
 * **Round trip.** `scripts/roundtrip-sysml.sh` checks, by content,
   `ApiJson.read (api-json (emit (harvest s))) = harvest s` for both scopes.
   `lake build Tests` pins the JSON round trip, the citations and the reader's conventions
