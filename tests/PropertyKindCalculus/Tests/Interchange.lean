@@ -1,0 +1,74 @@
+/-
+# Validation probes — the SysML v2 interchange
+
+The interchange's two halves are checked on the models the repository already carries:
+the harvested ISO 80000-3 catalogue and the harmonic-oscillator requirements tutorial are
+read back from their own JSON unchanged (`PkcModel.ofJsonString ∘ toJsonString`), their
+citations all name declarations of the environment, and the element-form reader recovers
+the DSL's conventions — keywords, redefinition chains, defaults, nested records, connection
+ends, negative literals — from a hand-built element list (`Tests.Interchange.ApiJson`).
+The full round trip through OpenSysML, `read (api-json (emit (harvest))) = harvest`, needs
+the `sysml` converter and runs as `scripts/roundtrip-sysml.sh`.
+-/
+
+module
+
+public import PropertyKindCalculus.Interchange
+public import PropertyKindCalculus.Iso80000.Part3
+public import Tutorial.HarmonicOscillatorRequirements
+public import PropertyKindCalculus.Tests.Interchange.ApiJson
+meta import PropertyKindCalculus.Interchange
+meta import PropertyKindCalculus.Iso80000.Part3
+meta import Tutorial.HarmonicOscillatorRequirements
+
+@[expose] public section Blanket
+
+namespace PropertyKindCalculus.Tests.Interchange
+
+open Lean PropertyKindCalculus.Interchange
+
+-- The harvested catalogue: read back from its JSON unchanged, every citation honoured, the
+-- catalogue's kinds and principles all present.
+run_meta do
+  let m ← Harvest.harvest #[`PropertyKindCalculus.Iso80000.Part3] "PKC_ISO80000_3"
+  unless m.kinds.length == 42 do throwError "expected 42 kinds, harvested {m.kinds.length}"
+  unless m.principles.length ≥ 8 do throwError "expected the length principles"
+  let some width := m.kind? "width" | throwError "no `width`"
+  unless width.specializes == ["length"] do throwError "width should specialize length"
+  unless width.principle == some "transverse" do throwError "width should carry its principle"
+  unless width.catalogueItem == some "3-1.2" do throwError "width should cite item 3-1.2"
+  unless width.dimension == [{ base := "length", num := 1, den := 1 }] do
+    throwError "width should carry the dimension L"
+  match PkcModel.ofJsonString m.toJsonString with
+  | .ok m' => unless m' == m do throwError "JSON round trip changed the catalogue model"
+  | .error e => throwError "JSON round trip failed: {e}"
+  let missing ← Harvest.unverifiedCitations m
+  unless missing.isEmpty do throwError "unverified citations: {missing}"
+  unless (EmitSysml.emit m).length > 0 do throwError "empty DSL emission"
+
+-- The tutorial's modules, relations and requirements.
+run_meta do
+  let m ← Harvest.harvest #[`Tutorial.HarmonicOscillator] "HarmonicOscillatorRequirements"
+  unless m.modules.length == 5 do throwError "expected 5 boundaries, harvested {m.modules.length}"
+  unless m.relations.length == 2 do throwError "expected 2 relations, harvested {m.relations.length}"
+  unless m.requirements.length == 7 do throwError "expected 7 requirements"
+  let some b := m.modules.find? (·.name == "complianceBoundary") | throwError "no complianceBoundary"
+  unless b.ports.length == 4 do throwError "complianceBoundary should have 4 ports"
+  unless b.ports.all (fun p => m.kind? p.kind |>.isSome) do
+    throwError "every port kind should be a harvested kind"
+  unless m.modules.any (·.role == .specification) do throwError "a specification boundary is expected"
+  match PkcModel.ofJsonString m.toJsonString with
+  | .ok m' => unless m' == m do throwError "JSON round trip changed the tutorial model"
+  | .error e => throwError "JSON round trip failed: {e}"
+  let missing ← Harvest.unverifiedCitations m
+  unless missing.isEmpty do throwError "unverified citations: {missing}"
+  -- the generated Lean names every boundary and relation
+  let lean := EmitLean.emit m
+  unless (lean.splitOn "Provenance.Contract String String").length == 6 do
+    throwError "generated module should define 5 contracts"
+  unless (lean.splitOn "Provenance.Relation where").length == 3 do
+    throwError "generated module should define 2 relations"
+
+end PropertyKindCalculus.Tests.Interchange
+
+end Blanket

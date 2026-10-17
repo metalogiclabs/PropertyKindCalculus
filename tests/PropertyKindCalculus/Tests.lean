@@ -24,7 +24,10 @@ Organized by dependency tier, matching the layering of the requirement catalogue
     forms), driven at a host stub carrier so it needs no GPU;
   * `Tests.ForMathlib` — the Mathlib staging area's digraph/quiver theory: classical theorems
     applied to concrete witnesses, decidability instances driven by `decide`, axiom profiles
-    pinned.
+    pinned;
+  * `Tests.Interchange` — the SysML v2 interchange: the harvested catalogue and tutorial read
+    back from their JSON unchanged, their citations honoured, and the element-form reader's
+    conventions exercised on a hand-built element list.
 
 Every probe file is imported by its tier index and, through the `Tests` library's `.andSubmodules`
 glob, also built directly by `lake build Tests` — an *unindexed* probe would still be built here, so
@@ -39,3 +42,4 @@ import PropertyKindCalculus.Tests.ForMathlib
 import PropertyKindCalculus.Tests.Graph
 import PropertyKindCalculus.Tests.Uncertainty
 import PropertyKindCalculus.Tests.Torch
+import PropertyKindCalculus.Tests.Interchange
