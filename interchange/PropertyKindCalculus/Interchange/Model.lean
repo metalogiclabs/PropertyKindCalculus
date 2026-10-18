@@ -34,8 +34,12 @@ namespace PropertyKindCalculus.Interchange
 
 open Lean (ToJson FromJson)
 
-/-- A citation of a kernel-checked declaration: its name and, optionally, the statement the
-author believes it has (checked against the environment on import, never trusted). -/
+/-- A citation of a kernel-checked declaration, with optional author-supplied text.
+
+`decl` is independently verified as proof evidence. The optional `statement` is
+untyped SysML text, not a Lean proposition; ingestion deliberately rejects its
+presence until typed claim-to-declaration correspondence can be established.
+A kernel-checked declaration alone cannot certify arbitrary descriptive text. -/
 structure Checked where
   decl : String
   statement : Option String := none

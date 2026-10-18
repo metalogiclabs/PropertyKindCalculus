@@ -88,6 +88,23 @@ run_meta do
   unless (← Harvest.notEvidence env `No.Such.Decl).isSome do
     throwError "a missing declaration is not evidence"
 
+-- Extra negative control: checked *declaration* is not enough to certify an
+-- optional free-form statement. This is an explicit conservative admission
+-- policy until an actual typed claim-to-theorem correspondence is implemented.
+run_meta do
+  let cited := "PropertyKindCalculus.Iso80000.Part3.Edge.width_length"
+  let mk (statement : Option String) : PkcModel :=
+    { packageName := "StatementGuard",
+      kinds := [{ name := "width", id := "width", scale := .ratio,
+                  checked := [{ decl := cited, statement }] }] }
+  let good ← Harvest.unverifiedCitations (mk none)
+  unless good.isEmpty do
+    throwError "statement-free proof citation unexpectedly rejected: {good}"
+  for statement in ["False", "True"] do
+    let bad ← Harvest.unverifiedCitations (mk (some statement))
+    unless bad.any (fun x => (x.splitOn "@Checked.statement").length > 1) do
+      throwError "unchecked statement was admitted: {statement} / {bad}"
+
 -- Model text cannot end, or nest, the generated comment it lands in.
 #guard EmitLean.commentText "a -/ b /- c\nd" == "a - / b / - c d"
 

@@ -577,6 +577,10 @@ def unverifiedCitations (m : PkcModel) : MetaM (List String) := do
     unless env.contains decl.toName do
       out := out ++ [s!"{elem}: source '{decl}' is not a declaration of the environment"]
   for (elem, c) in checkedOf m do
+    -- The optional SysML statement is free-form text, not a typed Lean claim.
+    -- Do not promote it to checked evidence without a typed correspondence test.
+    if c.statement.isSome then
+      out := out ++ [s!"{elem}: @Checked.statement is unchecked free text; typed correspondence required"]
     let n := c.decl.toName
     if let some why ← notEvidence env n then
       out := out ++ [s!"{elem}: '{c.decl}' {why}"]
