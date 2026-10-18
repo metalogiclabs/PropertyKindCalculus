@@ -1,0 +1,89 @@
+name: MathGraph PKC checked-statement strict policy (fork-only)
+
+on:
+  push:
+    branches:
+      - mathgraph/checked-statement-strict-v1-20261019
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  strict-statement-boundary:
+    name: Original PKC plus fail-closed @Checked regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout exact original-based policy branch
+        uses: actions/checkout@v4
+      - name: Verify protected original ancestor and restricted patch scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          pinned="e0deb453e05ffa63297d9704ceb47d0855193824"
+          git cat-file -e "$pinned^{commit}"
+          git merge-base --is-ancestor "$pinned" HEAD
+          python3 - <<'PY'
+          import subprocess
+          changes=set(subprocess.check_output(
+              ["git","diff","--name-only",
+               "e0deb453e05ffa63297d9704ceb47d0855193824","HEAD"],
+              text=True).splitlines())
+          needed={
+            "interchange/PropertyKindCalculus/Interchange/Harvest.lean",
+            "interchange/PropertyKindCalculus/Interchange/Model.lean",
+            "tests/PropertyKindCalculus/Tests/Interchange.lean",
+            ".github/workflows/mathgraph-checked-statement-policy-v1.yml",
+          }
+          if changes != needed:
+              raise SystemExit(f"FAIL_CLOSED_PATCH_SCOPE {changes.symmetric_difference(needed)}")
+          print("PATCH_SCOPE_4_FILES_VERIFIED")
+          PY
+          test "$(cat lean-toolchain)" = "leanprover/lean4:v4.34.0"
+      - name: Install Lean pinned by upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          "$HOME/.elan/bin/elan" toolchain install leanprover/lean4:v4.34.0
+      - name: Hydrate exact FloatLib lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=".lake/packages/floatlib"
+          mkdir -p "$root"
+          git -C "$root" init -q
+          git -C "$root" remote add origin https://github.com/lean-dojo/FloatLib.git
+          git -C "$root" -c protocol.version=2 fetch --depth=1 --no-tags origin \
+            5f8218dc571c01d6f8bd070c65bcd0de3a40b3c5
+          git -C "$root" checkout -q --detach 5f8218dc571c01d6f8bd070c65bcd0de3a40b3c5
+          test "$(git -C "$root" rev-parse HEAD)" = \
+            "5f8218dc571c01d6f8bd070c65bcd0de3a40b3c5"
+      - name: Optional Mathlib cache acceleration
+        continue-on-error: true
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$HOME/.elan/bin/lake" exe cache get 2>&1 \
+            | tee "$RUNNER_TEMP/jpl-pkc-fork-cache.log"
+      - name: Build actual patched Interchange and original author test module
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$HOME/.elan/bin/lake" build Interchange PropertyKindCalculus.Tests.Interchange \
+            2>&1 | tee "$RUNNER_TEMP/jpl-pkc-fork-test.log"
+          echo "FORK_STRICT_POLICY_TESTS_PASS source=$(git rev-parse HEAD)"
+      - name: Archive source-exact fork validation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mathgraph-pkc-strict-checked-statement-fork
+          path: |
+            interchange/PropertyKindCalculus/Interchange/Harvest.lean
+            interchange/PropertyKindCalculus/Interchange/Model.lean
+            tests/PropertyKindCalculus/Tests/Interchange.lean
+            ${{ runner.temp }}/jpl-pkc-fork-test.log
+          if-no-files-found: ignore
