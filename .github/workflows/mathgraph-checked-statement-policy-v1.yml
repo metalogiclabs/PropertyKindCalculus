@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout exact original-based policy branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
       - name: Verify protected original ancestor and restricted patch scope
         shell: bash
         run: |
