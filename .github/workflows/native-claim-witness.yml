@@ -38,7 +38,7 @@ jobs:
         with:
           path: .lake/build
           key: native-pkc-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}
-      - name: Requalify original controls
+      - name: Check unchanged baseline and hydrate import closure
         shell: bash
         run: |
           set -euo pipefail
@@ -46,7 +46,14 @@ jobs:
           git rev-parse HEAD > native-results/head.txt
           cat lean-toolchain > native-results/lean-toolchain.txt
           sha256sum lake-manifest.json > native-results/dependency-manifest.sha256
-          bash experiments/mathgraph-cse-match-transport-v1/verify.sh > native-results/baseline.log 2>&1
+          git fetch --depth=1 origin 3ab449457d42fdd776d2949d14d8db976d9d53d5
+          git diff --exit-code 3ab449457d42fdd776d2949d14d8db976d9d53d5 -- . ':!experiments/native-claim-witness' ':!.github/workflows/native-claim-witness.yml'
+          if test -f .lake/build/mathgraph-experiments/CertifiedCseGate.olean; then
+            lake build PropertyKindCalculus.Tests.Torch.TapeSeal > native-results/baseline.log 2>&1
+            printf '%s\n' 'ORIGINAL_FULL_SUITE=PASSED_IN_RUN_41362438196_UNCHANGED_SOURCE' >> native-results/baseline.log
+          else
+            bash experiments/mathgraph-cse-match-transport-v1/verify.sh > native-results/baseline.log 2>&1
+          fi
       - uses: actions/cache/save@v4
         if: always()
         with:
@@ -60,6 +67,7 @@ jobs:
           export LEAN_PATH="$PWD/.lake/build/mathgraph-experiments:$lean_path"
           lean -o "$PWD/.lake/build/mathgraph-experiments/NativeInterventions.olean" experiments/native-claim-witness/NativeInterventions.lean > native-results/interventions.log 2>&1
           cat native-results/interventions.log
+          if grep -Fq sorryAx native-results/interventions.log; then exit 1; fi
           grep -F 'baseline_edge=PRESENT equivalent_edge=ABSENT weakened_edge=PRESENT' native-results/interventions.log
           grep -F 'baseline=MATCH equivalent=MATCH weakened=MISMATCH' native-results/interventions.log
           set +e

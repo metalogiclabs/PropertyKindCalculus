@@ -23,7 +23,10 @@ The certificate field and Boolean conjunction suffice directly. -/
 theorem equivalentProof {ν κ : Type} [BEq ν] [BEq κ]
     {g : Provenance ν κ} {m : Match ν} (c : CertifiedCse g m) :
     m.Accepts g (ofTape c.rawTape) :=
-  (Bool.and_eq_true.mp c.checksPass).1
+by
+  have h := c.checksPass
+  simp only [Bool.and_eq_true] at h
+  exact h.1
 
 /-- Weaker conclusion, while retaining the same named PKC supporting edge.
 The original fixed claim is not changed to match this declaration. -/
