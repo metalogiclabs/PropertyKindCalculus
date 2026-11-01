@@ -1,0 +1,79 @@
+name: Native PKC claim-witness interventions
+on:
+  push:
+    branches: [test/claim-witness-interventions]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-pkc-interventions
+  cancel-in-progress: false
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install pinned Lean toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Hydrate exact FloatLib dependency
+        run: |
+          set -euo pipefail
+          pin="$(python3 -c "import json; print(next(p['rev'] for p in json.load(open('lake-manifest.json'))['packages'] if p['name']=='floatlib'))")"
+          mkdir -p .lake/packages/floatlib
+          git -C .lake/packages/floatlib init
+          git -C .lake/packages/floatlib remote add origin https://github.com/lean-dojo/FloatLib.git
+          git -C .lake/packages/floatlib fetch --depth=1 origin "$pin"
+          git -C .lake/packages/floatlib checkout --detach "$pin"
+          git -C .lake/packages/floatlib cat-file -e "$pin^{tree}"
+      - name: Restore dependency caches
+        run: lake exe cache get
+      - name: Requalify original controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p native-results
+          git rev-parse HEAD > native-results/head.txt
+          cat lean-toolchain > native-results/lean-toolchain.txt
+          sha256sum lake-manifest.json > native-results/dependency-manifest.sha256
+          bash experiments/mathgraph-cse-match-transport-v1/verify.sh > native-results/baseline.log 2>&1
+      - name: Run native interventions and deliberate negative consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          lean_path="$(lake env printenv LEAN_PATH)"
+          export LEAN_PATH="$PWD/.lake/build/mathgraph-experiments:$lean_path"
+          lean -o "$PWD/.lake/build/mathgraph-experiments/NativeInterventions.olean" experiments/native-claim-witness/NativeInterventions.lean > native-results/interventions.log 2>&1
+          cat native-results/interventions.log
+          grep -F 'baseline_edge=PRESENT equivalent_edge=ABSENT weakened_edge=PRESENT' native-results/interventions.log
+          grep -F 'baseline=MATCH equivalent=MATCH weakened=MISMATCH' native-results/interventions.log
+          set +e
+          lean experiments/native-claim-witness/WeakenedConsumer.lean > native-results/negative.log 2>&1
+          negative_status=$?
+          set -e
+          cat native-results/negative.log
+          test "$negative_status" -ne 0
+          grep -Eiq 'type mismatch|has type' native-results/negative.log
+          if grep -Eiq 'unknown identifier|unknown module|failed to synthesize' native-results/negative.log; then exit 1; fi
+          printf '%s\n' 'FIXED_REQUIREMENT_NEGATIVE=EXPECTED_TYPE_REJECTION' > native-results/result.txt
+          printf '%s\n' 'FGM_CLASSIFICATION=NOT_RUN' >> native-results/result.txt
+          cat native-results/result.txt
+      - name: Preserve source and measurement
+        if: always()
+        run: |
+          mkdir -p native-results
+          cp experiments/native-claim-witness/*.lean native-results/
+          cp lake-manifest.json native-results/
+          sha256sum native-results/* > native-results-SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-pkc-interventions
+          path: |
+            native-results/
+            native-results-SHA256SUMS
+          retention-days: 90
