@@ -30,8 +30,14 @@ jobs:
           git -C .lake/packages/floatlib fetch --depth=1 origin "$pin"
           git -C .lake/packages/floatlib checkout --detach "$pin"
           git -C .lake/packages/floatlib cat-file -e "$pin^{tree}"
+      - name: Install verification prerequisite
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Restore dependency caches
         run: lake exe cache get
+      - uses: actions/cache/restore@v4
+        with:
+          path: .lake/build
+          key: native-pkc-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}
       - name: Requalify original controls
         shell: bash
         run: |
@@ -41,6 +47,11 @@ jobs:
           cat lean-toolchain > native-results/lean-toolchain.txt
           sha256sum lake-manifest.json > native-results/dependency-manifest.sha256
           bash experiments/mathgraph-cse-match-transport-v1/verify.sh > native-results/baseline.log 2>&1
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .lake/build
+          key: native-pkc-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}
       - name: Run native interventions and deliberate negative consumer
         shell: bash
         run: |
