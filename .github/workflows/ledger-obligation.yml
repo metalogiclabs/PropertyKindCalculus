@@ -1,0 +1,34 @@
+name: Native ledger obligation replay
+on:
+  push:
+    branches: [test/ledger-obligation-20261103]
+    paths: ['.github/workflows/ledger-obligation.yml', 'experiments/ledger-obligation/replay.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned upstream Lean
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          "$HOME/.elan/bin/elan" toolchain install leanprover/lean4:v4.35.0
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          printf 'leanprover/lean4:v4.35.0\n' > lean-toolchain
+      - name: Native gate versus independent execution oracle
+        run: |
+          set -euo pipefail
+          lean --version
+          mkdir -p experiments/ledger-obligation/results
+          git rev-parse HEAD > experiments/ledger-obligation/results/experiment-head.txt
+          cd experiments/ledger-obligation
+          python3 replay.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ledger-obligation-native
+          path: experiments/ledger-obligation/results/
