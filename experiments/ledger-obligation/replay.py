@@ -52,6 +52,27 @@ for name,text,expected in cases:
  assert (p.returncode==0)==pure['native_gate_green'],name
  cli.append({'case':name,'exit':p.returncode,'native_gate_green':p.returncode==0,'python_executed':expected})
 (OUT/'native-cli.json').write_text(json.dumps(cli,indent=2)+'\n')
+# End-to-end unchanged gate on an exact checkout of the real repository.
+upstream=ROOT/'upstream-current';upstream.mkdir(exist_ok=True)
+for args in [['git','init','-q',str(upstream)],['git','-C',str(upstream),'fetch','--depth=1','--no-tags','https://github.com/nasa-jpl/L4YAML.git',REVISIONS['current']],['git','-C',str(upstream),'checkout','--detach','FETCH_HEAD']]:
+ subprocess.run(args,check=True,capture_output=True,text=True,timeout=120)
+assert (upstream/'Scripts/Ledger.lean').read_bytes()==(work/'Scripts/Ledger.lean').read_bytes()
+assert (upstream/'Scripts/Main/CheckScriptsLedger.lean').read_bytes()==driver.read_bytes()
+repo_runs=[];probe=upstream/'scripts/mathgraph_obligation_probe.sh';assert not probe.exists()
+try:
+ for name,text in [('baseline',None),('direct',cases[1][1]),('no_bytecode',cases[2][1]),('withdrawal',None)]:
+  if text is None:
+   if probe.exists():probe.unlink()
+  else:probe.write_text(text)
+  p=subprocess.run(['lean','--run','Scripts/Main/CheckScriptsLedger.lean','-C',str(upstream)],cwd=work,env=env,capture_output=True,text=True,timeout=90)
+  (OUT/f'repository-{name}.log').write_text(p.stdout+p.stderr)
+  repo_runs.append({'case':name,'exit':p.returncode,'stdout':p.stdout,'stderr':p.stderr})
+ assert [x['exit'] for x in repo_runs]==[0,1,0,0],repo_runs
+finally:
+ if probe.exists():probe.unlink()
+assert subprocess.run(['git','-C',str(upstream),'status','--porcelain'],capture_output=True,text=True,check=True).stdout==''
+(OUT/'repository-replay.json').write_text(json.dumps({'revision':REVISIONS['current'],'runs':repo_runs,'restored_clean':True,'native_library_oracle':'Pure module plus actual Bash execution','upstream_full_library_build':'NOT_RUN'},indent=2)+'\n')
+
 for label in REVISIONS:
  arm={x['case']:x for x in results if x['revision_label']==label}
  assert arm['clean']['native_gate_green'];assert not arm['direct']['native_gate_green']
@@ -62,7 +83,7 @@ for label in REVISIONS:
 # zero-unlisted-inline obligation when independent execution contradicts it.
 for x in results:
  x['independent_check']='FAIL' if x['false_green'] or x['false_refusal'] else 'PASS'
-report={'design':'Known historical controls plus three newly constructed option-prefix controls; not a prospective Devin benchmark','obligation':'No unlisted inline Python executes; a frozen empty ledger has pin 0 and no rows','source_mutated':False,'native_cli_cases':cli,'native_arms':len(REVISIONS),'cases_per_arm':len(cases),'results':results,'current_false_greens':sum(x['false_green'] for x in results if x['revision_label']=='current'),'product_status':'Independent obligation-check prototype, not deployed MathGraph Check integration','boundary':'Finite Linux Bash/Python fixtures over actual upstream pure inventory+gate; full unchanged current CLI replayed on seven fixtures; not full repository CI or arbitrary shell equivalence'}
+report={'design':'Known historical controls plus three newly constructed option-prefix controls; not a prospective Devin benchmark','obligation':'No unlisted inline Python executes; a frozen empty ledger has pin 0 and no rows','source_mutated':False,'real_repository_control_exit_codes':[x['exit'] for x in repo_runs],'native_cli_cases':cli,'native_arms':len(REVISIONS),'cases_per_arm':len(cases),'results':results,'current_false_greens':sum(x['false_green'] for x in results if x['revision_label']=='current'),'product_status':'Independent obligation-check prototype, not deployed MathGraph Check integration','boundary':'Finite Linux Bash/Python fixtures over actual upstream pure inventory+gate; full unchanged current CLI replayed on seven fixtures; actual full repository gate replayed, not full library/CI build or arbitrary shell equivalence'}
 (OUT/'REPORT.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps({'native_rows':len(results),'current_false_greens':report['current_false_greens'],'source_unchanged':True,'status':'BOUNDED_NATIVE_REPLAY_PASS'}))
 with (OUT/'SHA256SUMS').open('w') as f:
