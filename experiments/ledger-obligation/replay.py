@@ -41,11 +41,19 @@ work=ROOT/'work/current';driver=work/'Scripts/Main/CheckScriptsLedger.lean';driv
 data=urllib.request.urlopen(f"https://raw.githubusercontent.com/nasa-jpl/L4YAML/{REVISIONS['current']}/Scripts/Main/CheckScriptsLedger.lean").read()
 assert hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()=='5fa82509224259019cb730575517b2f2b0cc5168'
 driver.write_bytes(data);(OUT/'current-CheckScriptsLedger.lean').write_bytes(data)
+# Link the unchanged upstream modules as a native executable. A bare lean --run
+# cannot resolve separately compiled module implementations.
+(work/'lakefile.lean').write_text('import Lake\nopen Lake DSL\npackage LedgerProbe\nlean_lib Scripts where\n  roots := #[`Scripts.Ledger]\nlean_exe gate where\n  root := `Scripts.Main.CheckScriptsLedger\n  supportInterpreter := true\n')
+(work/'lean-toolchain').write_text('leanprover/lean4:v4.35.0\n')
+build=subprocess.run(['lake','build','gate'],cwd=work,capture_output=True,text=True,timeout=180)
+(OUT/'native-cli-build.log').write_text(build.stdout+build.stderr);assert build.returncode==0,(build.stdout+build.stderr)[-4000:]
+gate=str(work/'.lake/build/bin/gate')
+
 cli=[]
 for name,text,expected in cases:
  fixture=work/'fixtures'/name;(fixture/'scripts').mkdir(parents=True,exist_ok=True)
  (fixture/'scripts/probe.sh').write_text(text);(fixture/'scripts/scripts-ledger.txt').write_text('# open: 0\n');(fixture/'lakefile.lean').write_text('')
- p=subprocess.run(['lean','--run','Scripts/Main/CheckScriptsLedger.lean','-C',str(fixture)],cwd=work,env=env,capture_output=True,text=True,timeout=90)
+ p=subprocess.run([gate,'-C',str(fixture)],cwd=work,env=env,capture_output=True,text=True,timeout=90)
  assert p.returncode in [0,1],(name,p.stdout,p.stderr)
  (OUT/f'cli-{name}.log').write_text(p.stdout+p.stderr)
  pure=next(x for x in results if x['revision_label']=='current' and x['case']==name)
@@ -64,7 +72,7 @@ try:
   if text is None:
    if probe.exists():probe.unlink()
   else:probe.write_text(text)
-  p=subprocess.run(['lean','--run','Scripts/Main/CheckScriptsLedger.lean','-C',str(upstream)],cwd=work,env=env,capture_output=True,text=True,timeout=90)
+  p=subprocess.run([gate,'-C',str(upstream)],cwd=work,env=env,capture_output=True,text=True,timeout=90)
   (OUT/f'repository-{name}.log').write_text(p.stdout+p.stderr)
   repo_runs.append({'case':name,'exit':p.returncode,'stdout':p.stdout,'stderr':p.stderr})
  assert [x['exit'] for x in repo_runs]==[0,1,0,0],repo_runs
