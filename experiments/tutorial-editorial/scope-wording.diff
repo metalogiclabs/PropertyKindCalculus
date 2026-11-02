@@ -1,0 +1,106 @@
+--- a/examples/Tutorial/HarmonicOscillatorRequirements.lean
++++ b/examples/Tutorial/HarmonicOscillatorRequirements.lean
+@@ -211,13 +211,14 @@
+ #kind_contract_decide admittanceSpec
+ 
+ /-- The theorem edge HP2 is discharged by. The model is on the left; the witness reads
+-`spec ≤ model`, which is the direction the requirement states. -/
++`spec ≤ model`. Interpreting this as a physical admittance bound also requires positive
++resistance and the frequency-domain assumptions; the Float spot check is separate. -/
+ def impedanceBoundedByResistance : Provenance.Relation where
+   left := ``impedanceBoundary
+   right := ``admittanceSpec
+   kind := .boundedBy
+   witness := ``admittance_bounded
+-  claim := "the velocity response per unit driving force never exceeds 1/c: |Z|² ≥ c²"
++  claim := "the model's squared impedance is at least the squared resistance: |Z|² ≥ c²"
+ 
+ /-- **The spot check**, at the complex executable carrier the case study runs on:
+ `|Z|² = 25 ≥ 9 = c²` for its `Z = 3 + 4i`. -/
+@@ -226,7 +227,7 @@
+ /-- HP2: provable, through the edge, spot-checked, over every driven oscillator. -/
+ def hp2 : Provenance.Requirement where
+   name := "HP2"
+-  statement := "the velocity response per unit driving force never exceeds 1/c: |Z|² ≥ c²"
++  statement := "the model's squared impedance is at least the squared resistance: |Z|² ≥ c²"
+   kind := .provable
+   governs := ``impedanceBoundary
+   port := some (NodeId.result.within ``impedanceAbs2)
+@@ -236,7 +237,7 @@
+ 
+ /--
+ info: kind requirement 'HP2' (provable) on 'driven oscillator — squared impedance'
+-statement: the velocity response per unit driving force never exceeds 1/c: |Z|² ≥ c²
++statement: the model's squared impedance is at least the squared resistance: |Z|² ≥ c²
+ governs: 'driven oscillator — squared impedance' at impedanceAbs2/result
+ scope: sort PropertyKindCalculus.Examples.HarmonicOscillator.Attempt4.Tier5.drivenS
+ edge: Tutorial.HarmonicOscillator.impedanceBoundedByResistance — 'driven oscillator — squared impedance' bounded by 'specification — resistance squared'
+@@ -283,11 +284,11 @@
+ /-- **HP5's spot check.** -/
+ def hp5_spot : Bool := (pairMassOf ⟨3⟩ ⟨5⟩).magnitude == 8
+ 
+-/-- HP5: provable by a bare theorem, over every coupled pair. -/
++/-- HP5: provable by a bare theorem, for the worked pair with masses 3 and 5. -/
+ def hp5 : Provenance.Requirement where
+   name := "HP5"
+-  statement := "the mass of the pair is the sum of its bodies' masses, as the license for \
+-    the pair's sort states"
++  statement := "for the worked pair with masses 3 and 5, the computed mass agrees with \
++    its licensed assembly"
+   kind := .provable
+   governs := ``pairBoundary
+   port := some (NodeId.result.within ``pairMassOf)
+@@ -297,7 +298,7 @@
+ 
+ /--
+ info: kind requirement 'HP5' (provable) on 'coupled pair — mass'
+-statement: the mass of the pair is the sum of its bodies' masses, as the license for the pair's sort states
++statement: for the worked pair with masses 3 and 5, the computed mass agrees with its licensed assembly
+ governs: 'coupled pair — mass' at pairMassOf/result
+ scope: sort Tutorial.HarmonicOscillator.pairS
+ witness: Tutorial.HarmonicOscillator.pairMassOf_is_assembled
+--- a/blueprint/PropertyKindCalculusBlueprint/Chapters/Units.lean
++++ b/blueprint/PropertyKindCalculusBlueprint/Chapters/Units.lean
+@@ -64,8 +64,7 @@
+ or comparing a `Quantity k₁ R` with a `Quantity k₂ R` when $`k_1 \neq k_2` — even
+ if both kinds are dimension one. This indexing _is_ the fix for the dimension-1
+ conflation. The second index $`R` is the numeric carrier: the same value type is
+-instantiated at $`\mathbb{R}` and `Int` to prove, at `Float` to run today, and (the
+-planned float carriers) at `FP32` to bound rounding and at `IEEE32Exec` to run with
++instantiated at $`\mathbb{R}` and `Int` to prove, at `Float` to run today, and (in the separate `Torch` library) at `FP32` to bound rounding and at `IEEE32Exec` to run with
+ NaN — the kind machinery above it written once for all of them.
+ :::
+ 
+@@ -122,11 +121,11 @@
+ exec sum _viewed in the spec carrier_ is the rounding of the spec sum,
+ $$`\mathrm{toSpec}(x +_E y) = \mathrm{round}\,(\mathrm{toSpec}\,x +_S \mathrm{toSpec}\,y),`
+ established over _any_ {uses "def_carrier_refinement"}[carrier refinement] and so
+-holding at each at once. A law proved over the lawful spec carrier therefore
+-transfers to the executable run with one rounding step — the bridge that carries
+-the {uses "thm_quantity_laws_parametric"}[representation-parametric laws] from the
+-lawful `ℝ` onto a float that is _not_ lawful, so one kind-indexed value serves both
+-proof and execution.
++holding at each at once. This theorem relates one executable addition to one
++rounded specification addition. It does not restore associativity on an unlawful
++float carrier or collapse an entire expression's rounding to one step. Whole-program
++transfer needs the corresponding compositional rounding and domain hypotheses;
++the kind index is preserved across this local bridge.
+ :::
+ 
+ :::proof "thm_representation_refinement"
+--- a/PropertyKindCalculus/QuantityRefinement.lean
++++ b/PropertyKindCalculus/QuantityRefinement.lean
+@@ -150,9 +150,10 @@
+ quantity, the executable sum *viewed in the spec carrier* equals the rounding of
+ the spec sum:
+ $$ \mathrm{toSpec}(x +_E y) = \mathrm{round}\,(\mathrm{toSpec}\,x +_S \mathrm{toSpec}\,y). $$
+-This is `CarrierRefinement.toSpec_add` lifted along the kind index, so a law proved
+-over the lawful spec carrier transfers to the executable run with one rounding
+-step. The kind `k` is preserved throughout — the bridge never crosses kinds. -/
++This is `CarrierRefinement.toSpec_add` lifted along the kind index: one executable
++addition is related to one rounded specification addition. It does not transfer
++arbitrary algebraic laws or collapse whole-expression rounding to one step.
++The kind `k` is preserved throughout — the bridge never crosses kinds. -/
+ theorem add_refines [Carrier E] [Carrier S] [CarrierRefinement E S]
+     (h : DifferenceKind k) (x y : Quantity k E) :
+     (Quantity.toSpec (Quantity.add h x y) : Quantity k S)

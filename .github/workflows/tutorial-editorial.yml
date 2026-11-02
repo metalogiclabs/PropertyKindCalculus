@@ -1,0 +1,96 @@
+name: PKC tutorial editorial native replay
+on:
+  push:
+    branches: [test/tutorial-editorial-20261102]
+    paths: ['.github/workflows/tutorial-editorial.yml', 'experiments/tutorial-editorial/scope-wording.diff']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tutorial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: nasa-jpl/PropertyKindCalculus
+          ref: e5579564ef499f43db82f9133e16c14b50b4a461
+          path: source/pkc
+          persist-credentials: false
+      - name: Pin inputs and install the original toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          git rev-parse HEAD > results/experiment-head.txt
+          git -C source/pkc rev-parse HEAD > results/pkc-head.txt
+          test "$(cat results/pkc-head.txt)" = e5579564ef499f43db82f9133e16c14b50b4a461
+          cp experiments/tutorial-editorial/scope-wording.diff results/
+          curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          "$HOME/.elan/bin/elan" toolchain install leanprover/lean4:v4.35.0
+          "$HOME/.elan/bin/lean" +leanprover/lean4:v4.35.0 --version | tee results/lean-version.txt
+      - name: Hydrate exact historical dependency objects
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          root=pathlib.Path('source/pkc')
+          for p in json.loads((root/'lake-manifest.json').read_text())['packages']:
+              if p['name'] not in ['TorchLean','floatlib']: continue
+              dest=root/'.lake/packages'/p['name'];dest.mkdir(parents=True,exist_ok=True)
+              subprocess.run(['git','init','-q',str(dest)],check=True)
+              sources=[p['url']]
+              if p['name']=='TorchLean': sources+=['https://github.com/lean-dojo/TorchLean.git','https://github.com/NicolasRouquette/TorchLean.git']
+              for url in dict.fromkeys(sources):
+                  q=subprocess.run(['git','-C',str(dest),'fetch','--depth=1','--no-tags',url,p['rev']])
+                  if q.returncode==0: break
+              else: raise RuntimeError('Exact public dependency unavailable: '+p['name'])
+              subprocess.run(['git','-C',str(dest),'checkout','--detach',p['rev']],check=True)
+          PY
+      - name: Acquire the pinned Mathlib cache
+        continue-on-error: true
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          cd source/pkc
+          "$HOME/.elan/bin/lake" exe cache get 2>&1 | tee ../../results/cache.log
+      - name: Compile unchanged tutorial and its pinned refusal outputs
+        run: |
+          set -euo pipefail
+          cd source/pkc
+          "$HOME/.elan/bin/lake" build Tutorial 2>&1 | tee ../../results/baseline.log
+          test -z "$(git diff --name-only)"
+      - name: Apply only the frozen editorial patch
+        run: |
+          set -euo pipefail
+          cd source/pkc
+          git apply --check ../../experiments/tutorial-editorial/scope-wording.diff
+          git apply ../../experiments/tutorial-editorial/scope-wording.diff
+          git diff --check
+          git diff --binary > ../../results/applied.diff
+          git diff --name-only > ../../results/changed-files.txt
+          python3 - <<'PY'
+          import pathlib
+          names=set(pathlib.Path('../../results/changed-files.txt').read_text().splitlines())
+          assert names=={'PropertyKindCalculus/QuantityRefinement.lean','examples/Tutorial/HarmonicOscillatorRequirements.lean','blueprint/PropertyKindCalculusBlueprint/Chapters/Units.lean'},names
+          PY
+      - name: Compile the patched tutorial and exact updated expected messages
+        run: |
+          set -euo pipefail
+          cd source/pkc
+          "$HOME/.elan/bin/lake" build Tutorial 2>&1 | tee ../../results/patched.log
+          echo PKC_TUTORIAL_EDITORIAL_NATIVE_GREEN | tee ../../results/verdict.txt
+      - name: Retain exact source and evidence identities
+        if: always()
+        run: |
+          set -euo pipefail
+          cp source/pkc/examples/Tutorial/HarmonicOscillatorRequirements.lean results/
+          cp source/pkc/PropertyKindCalculus/QuantityRefinement.lean results/
+          cp source/pkc/blueprint/PropertyKindCalculusBlueprint/Chapters/Units.lean results/
+          cd results
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pkc-tutorial-editorial-native
+          path: results/
