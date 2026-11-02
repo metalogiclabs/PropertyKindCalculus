@@ -36,6 +36,22 @@ for label,rev in REVISIONS.items():
   _,name,sites,errors=line.split('\t');obs=next(x for x in observations if x['case']==name)
   results.append({'revision_label':label,'revision':rev,'case':name,'detected_sites':int(sites),'gate_errors':int(errors),'native_gate_green':int(errors)==0,'oracle_python_executed':obs['python_executed'],'policy_violation_unlisted_inline':obs['python_executed'],'false_green':obs['python_executed'] and int(errors)==0,'false_refusal':not obs['python_executed'] and int(errors)>0})
  assert len([x for x in results if x['revision_label']==label])==len(cases)
+# Full unchanged current CLI over real fixture directories (not just the pure API).
+work=ROOT/'work/current';driver=work/'Scripts/Main/CheckScriptsLedger.lean';driver.parent.mkdir(parents=True,exist_ok=True)
+data=urllib.request.urlopen(f"https://raw.githubusercontent.com/nasa-jpl/L4YAML/{REVISIONS['current']}/Scripts/Main/CheckScriptsLedger.lean").read()
+assert hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()=='5fa82509224259019cb730575517b2f2b0cc5168'
+driver.write_bytes(data);(OUT/'current-CheckScriptsLedger.lean').write_bytes(data)
+cli=[]
+for name,text,expected in cases:
+ fixture=work/'fixtures'/name;(fixture/'scripts').mkdir(parents=True,exist_ok=True)
+ (fixture/'scripts/probe.sh').write_text(text);(fixture/'scripts/scripts-ledger.txt').write_text('# open: 0\n');(fixture/'lakefile.lean').write_text('')
+ p=subprocess.run(['lean','--run','Scripts/Main/CheckScriptsLedger.lean','-C',str(fixture)],cwd=work,env=env,capture_output=True,text=True,timeout=90)
+ assert p.returncode in [0,1],(name,p.stdout,p.stderr)
+ (OUT/f'cli-{name}.log').write_text(p.stdout+p.stderr)
+ pure=next(x for x in results if x['revision_label']=='current' and x['case']==name)
+ assert (p.returncode==0)==pure['native_gate_green'],name
+ cli.append({'case':name,'exit':p.returncode,'native_gate_green':p.returncode==0,'python_executed':expected})
+(OUT/'native-cli.json').write_text(json.dumps(cli,indent=2)+'\n')
 for label in REVISIONS:
  arm={x['case']:x for x in results if x['revision_label']==label}
  assert arm['clean']['native_gate_green'];assert not arm['direct']['native_gate_green']
@@ -46,7 +62,7 @@ for label in REVISIONS:
 # zero-unlisted-inline obligation when independent execution contradicts it.
 for x in results:
  x['independent_check']='FAIL' if x['false_green'] or x['false_refusal'] else 'PASS'
-report={'design':'Known historical controls plus three newly constructed option-prefix controls; not a prospective Devin benchmark','obligation':'No unlisted inline Python executes; a frozen empty ledger has pin 0 and no rows','source_mutated':False,'native_arms':len(REVISIONS),'cases_per_arm':len(cases),'results':results,'current_false_greens':sum(x['false_green'] for x in results if x['revision_label']=='current'),'product_status':'Independent obligation-check prototype, not deployed MathGraph Check integration','boundary':'Finite Linux Bash/Python fixtures over actual upstream pure inventory+gate; not full driver, repository CI or arbitrary shell equivalence'}
+report={'design':'Known historical controls plus three newly constructed option-prefix controls; not a prospective Devin benchmark','obligation':'No unlisted inline Python executes; a frozen empty ledger has pin 0 and no rows','source_mutated':False,'native_cli_cases':cli,'native_arms':len(REVISIONS),'cases_per_arm':len(cases),'results':results,'current_false_greens':sum(x['false_green'] for x in results if x['revision_label']=='current'),'product_status':'Independent obligation-check prototype, not deployed MathGraph Check integration','boundary':'Finite Linux Bash/Python fixtures over actual upstream pure inventory+gate; full unchanged current CLI replayed on seven fixtures; not full repository CI or arbitrary shell equivalence'}
 (OUT/'REPORT.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps({'native_rows':len(results),'current_false_greens':report['current_false_greens'],'source_unchanged':True,'status':'BOUNDED_NATIVE_REPLAY_PASS'}))
 with (OUT/'SHA256SUMS').open('w') as f:
